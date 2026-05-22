@@ -11,14 +11,14 @@ const AuthContext = createContext<AuthContextType | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [isAuthenticated, setIsAuthenticated] = useState(
-    () => sessionStorage.getItem("ptc_auth") === "true"
+    () => localStorage.getItem("ptc_auth") === "true"
   );
 
   useEffect(() => {
     if (isAuthenticated) {
-      sessionStorage.setItem("ptc_auth", "true");
+      localStorage.setItem("ptc_auth", "true");
     } else {
-      sessionStorage.removeItem("ptc_auth");
+      localStorage.removeItem("ptc_auth");
     }
   }, [isAuthenticated]);
 
