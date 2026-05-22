@@ -30,6 +30,15 @@
       "icons/128x128@2x.png",
       "icons/icon.icns",
       "icons/icon.ico"
-    ]
+    ],
+    "createUpdaterArtifacts": true
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDYxRTIzRDUwNzVGN0MzRQpSV1ErZkY4SDFTTWVCbi9qcUlua09YOFpWUndyTEtSVXhCbGpaKzNGOUhMaHhWVWh4TklORnFwUgo=",
+      "endpoints": [
+        "https://github.com/vyeos/ptc/releases/latest/download/latest.json"
+      ]
+    }
   }
 }

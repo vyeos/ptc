@@ -18,6 +18,12 @@ import {
   pickBackupFolder,
   type BackupFrequency,
 } from "@/lib/backup";
+import {
+  checkForUpdate,
+  downloadAndInstall,
+  type UpdateStatus,
+} from "@/lib/updater";
+import { getVersion } from "@tauri-apps/api/app";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -61,7 +67,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
-import { Plus, Pencil, Trash2, Moon, HardDrive, FolderOpen } from "lucide-react";
+import { Plus, Pencil, Trash2, Moon, HardDrive, FolderOpen, Download, RefreshCw, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
 
 export default function Settings() {
@@ -91,8 +97,13 @@ export default function Settings() {
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
 
+  const [appVersion, setAppVersion] = useState("");
+  const [updateStatus, setUpdateStatus] = useState<UpdateStatus>({ state: "idle" });
+  const [pendingUpdate, setPendingUpdate] = useState<any>(null);
+
   useEffect(() => {
     loadAll();
+    getVersion().then(setAppVersion);
   }, []);
 
   async function loadAll() {
@@ -190,6 +201,37 @@ export default function Settings() {
     await setSetting("dark_mode", String(checked));
   };
 
+  const handleCheckUpdate = async () => {
+    setUpdateStatus({ state: "checking" });
+    try {
+      const result = await checkForUpdate();
+      if (result.available && result.update) {
+        setPendingUpdate(result.update);
+        setUpdateStatus({
+          state: "available",
+          version: result.version!,
+          body: result.body,
+        });
+      } else {
+        setUpdateStatus({ state: "up-to-date" });
+      }
+    } catch (err) {
+      setUpdateStatus({ state: "error", message: String(err) });
+    }
+  };
+
+  const handleInstallUpdate = async () => {
+    if (!pendingUpdate) return;
+    setUpdateStatus({ state: "downloading", progress: 0 });
+    try {
+      await downloadAndInstall(pendingUpdate, (progress) => {
+        setUpdateStatus({ state: "downloading", progress });
+      });
+    } catch (err) {
+      setUpdateStatus({ state: "error", message: String(err) });
+    }
+  };
+
   const handleBackupFrequency = async (value: string) => {
     setBackupFrequency(value as BackupFrequency);
     await setSetting("backup_frequency", value);
@@ -260,6 +302,87 @@ export default function Settings() {
               </div>
             </div>
             <Switch checked={darkMode} onCheckedChange={handleDarkMode} />
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>App Updates</CardTitle>
+          <CardDescription>
+            Current version: {appVersion || "..."}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Download className="size-5 text-muted-foreground" />
+              <div>
+                {updateStatus.state === "idle" && (
+                  <p className="text-sm text-muted-foreground">
+                    Check for new versions
+                  </p>
+                )}
+                {updateStatus.state === "checking" && (
+                  <p className="text-sm text-muted-foreground">
+                    Checking for updates...
+                  </p>
+                )}
+                {updateStatus.state === "up-to-date" && (
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="size-4 text-success" />
+                    <p className="text-sm text-muted-foreground">
+                      You're on the latest version
+                    </p>
+                  </div>
+                )}
+                {updateStatus.state === "available" && (
+                  <div>
+                    <p className="text-sm font-medium">
+                      Version {updateStatus.version} available
+                    </p>
+                    {updateStatus.body && (
+                      <p className="text-sm text-muted-foreground">
+                        {updateStatus.body}
+                      </p>
+                    )}
+                  </div>
+                )}
+                {updateStatus.state === "downloading" && (
+                  <div>
+                    <p className="text-sm font-medium">
+                      Downloading update... {updateStatus.progress}%
+                    </p>
+                  </div>
+                )}
+                {updateStatus.state === "ready" && (
+                  <p className="text-sm font-medium">
+                    Update ready — restarting...
+                  </p>
+                )}
+                {updateStatus.state === "error" && (
+                  <p className="text-sm text-destructive">
+                    Update failed: {updateStatus.message}
+                  </p>
+                )}
+              </div>
+            </div>
+            {updateStatus.state === "available" ? (
+              <Button size="sm" onClick={handleInstallUpdate}>
+                <Download className="size-4 mr-1" />
+                Install Update
+              </Button>
+            ) : (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleCheckUpdate}
+                disabled={updateStatus.state === "checking" || updateStatus.state === "downloading"}
+              >
+                <RefreshCw className={`size-4 mr-1 ${updateStatus.state === "checking" ? "animate-spin" : ""}`} />
+                Check for Updates
+              </Button>
+            )}
           </div>
         </CardContent>
       </Card>
