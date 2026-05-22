@@ -21,11 +21,11 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -51,7 +51,7 @@ export default function Students() {
   const [tab, setTab] = useState("year1");
   const [students, setStudents] = useState<StudentWithCourse[]>([]);
   const [search, setSearch] = useState("");
-  const [sheetOpen, setSheetOpen] = useState(false);
+  const [dialogOpen, setDialogOpen] = useState(false);
   const [deleteId, setDeleteId] = useState<number | null>(null);
   const [importing, setImporting] = useState(false);
 
@@ -96,7 +96,7 @@ export default function Students() {
 
   const handleAdd = async (data: StudentFormData) => {
     await addStudent(data);
-    setSheetOpen(false);
+    setDialogOpen(false);
     toast.success("Student added");
     load();
   };
@@ -160,7 +160,7 @@ export default function Students() {
             </label>
           </Button>
 
-          <Button onClick={() => setSheetOpen(true)}>
+          <Button onClick={() => setDialogOpen(true)}>
             <Plus data-icon="inline-start" />
             Add Student
           </Button>
@@ -248,16 +248,14 @@ export default function Students() {
         ))}
       </Tabs>
 
-      <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
-        <SheetContent>
-          <SheetHeader>
-            <SheetTitle>Add Student</SheetTitle>
-          </SheetHeader>
-          <div className="mt-4">
-            <StudentForm onSubmit={handleAdd} onCancel={() => setSheetOpen(false)} />
-          </div>
-        </SheetContent>
-      </Sheet>
+      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add Student</DialogTitle>
+          </DialogHeader>
+          <StudentForm onSubmit={handleAdd} onCancel={() => setDialogOpen(false)} />
+        </DialogContent>
+      </Dialog>
 
       <AlertDialog open={deleteId !== null} onOpenChange={(open) => !open && setDeleteId(null)}>
         <AlertDialogContent>

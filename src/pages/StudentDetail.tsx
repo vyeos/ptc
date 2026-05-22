@@ -30,11 +30,11 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -145,8 +145,6 @@ export default function StudentDetail() {
               <dd>{student.parent_name || "—"}</dd>
               <dt className="text-muted-foreground">Gender</dt>
               <dd className="capitalize">{student.gender || "—"}</dd>
-              <dt className="text-muted-foreground">Address</dt>
-              <dd>{student.address || "—"}</dd>
               <dt className="text-muted-foreground">Enrolled</dt>
               <dd>{new Date(student.enrollment_date).toLocaleDateString("en-IN")}</dd>
             </dl>
@@ -273,27 +271,24 @@ export default function StudentDetail() {
         </CardContent>
       </Card>
 
-      <Sheet open={editOpen} onOpenChange={setEditOpen}>
-        <SheetContent>
-          <SheetHeader>
-            <SheetTitle>Edit Student</SheetTitle>
-          </SheetHeader>
-          <div className="mt-4">
-            <StudentForm
-              initial={{
-                name: student.name,
-                parent_name: student.parent_name || "",
-                gender: student.gender || "",
-                address: student.address || "",
-                course_id: student.course_id,
-                enrollment_date: student.enrollment_date.split("T")[0],
-              }}
-              onSubmit={handleUpdate}
-              onCancel={() => setEditOpen(false)}
-            />
-          </div>
-        </SheetContent>
-      </Sheet>
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Student</DialogTitle>
+          </DialogHeader>
+          <StudentForm
+            initial={{
+              name: student.name,
+              parent_name: student.parent_name || "",
+              gender: student.gender || "",
+              course_id: student.course_id,
+              enrollment_date: student.enrollment_date.split("T")[0],
+            }}
+            onSubmit={handleUpdate}
+            onCancel={() => setEditOpen(false)}
+          />
+        </DialogContent>
+      </Dialog>
 
       <FeePaymentDialog
         studentId={studentId}

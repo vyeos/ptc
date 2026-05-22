@@ -49,7 +49,6 @@ function matchHeader(headers: string[]): Record<string, number> {
     course: find(["course", "course name"]),
     parent: find(["parent", "parent name", "parent_name"]),
     gender: find(["gender", "sex"]),
-    address: find(["address"]),
     enrolled: find(["enrolled", "enrollment date", "enrollment_date", "enroll date"]),
   };
 }
@@ -114,13 +113,12 @@ export async function importStudentsCsv(file: File): Promise<ImportResult> {
 
     try {
       const insertResult = await db.execute(
-        `INSERT INTO students (name, parent_name, gender, address, course_id, enrollment_date, current_year, batch_year)
-         VALUES (?, ?, ?, ?, ?, ?, 1, ?)`,
+        `INSERT INTO students (name, parent_name, gender, course_id, enrollment_date, current_year, batch_year)
+         VALUES (?, ?, ?, ?, ?, 1, ?)`,
         [
           name,
           get("parent") || null,
           get("gender") || null,
-          get("address") || null,
           course.id,
           enrollDate,
           batchYear,

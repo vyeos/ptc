@@ -14,7 +14,6 @@ export interface Student {
   name: string;
   parent_name: string | null;
   gender: string | null;
-  address: string | null;
   course_id: number;
   enrollment_date: string;
   current_year: number;
@@ -164,7 +163,6 @@ export async function addStudent(data: {
   name: string;
   parent_name?: string;
   gender?: string;
-  address?: string;
   course_id: number;
   enrollment_date: string;
 }): Promise<number> {
@@ -181,13 +179,12 @@ export async function addStudent(data: {
   const batchYear = enrollYear + course.duration_years;
 
   const result = await db.execute(
-    `INSERT INTO students (name, parent_name, gender, address, course_id, enrollment_date, current_year, batch_year)
-     VALUES (?, ?, ?, ?, ?, ?, 1, ?)`,
+    `INSERT INTO students (name, parent_name, gender, course_id, enrollment_date, current_year, batch_year)
+     VALUES (?, ?, ?, ?, ?, 1, ?)`,
     [
       data.name,
       data.parent_name || null,
       data.gender || null,
-      data.address || null,
       data.course_id,
       data.enrollment_date,
       batchYear,
@@ -215,7 +212,6 @@ export async function updateStudent(
     name: string;
     parent_name?: string;
     gender?: string;
-    address?: string;
     course_id: number;
     enrollment_date: string;
   }
@@ -234,13 +230,12 @@ export async function updateStudent(
 
   await db.execute(
     `UPDATE students
-     SET name = ?, parent_name = ?, gender = ?, address = ?, course_id = ?, enrollment_date = ?, batch_year = ?
+     SET name = ?, parent_name = ?, gender = ?, course_id = ?, enrollment_date = ?, batch_year = ?
      WHERE id = ?`,
     [
       data.name,
       data.parent_name || null,
       data.gender || null,
-      data.address || null,
       data.course_id,
       data.enrollment_date,
       batchYear,

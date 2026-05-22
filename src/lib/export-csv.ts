@@ -25,13 +25,12 @@ export async function exportStudentsCsv(filter?: { graduated?: boolean }) {
   const students = await getStudents(filter ?? { graduated: false });
   downloadCsv(
     "students.csv",
-    ["Name", "Course", "Parent", "Gender", "Address", "Year", "Batch", "Enrolled", "Graduated"],
+    ["Name", "Course", "Parent", "Gender", "Year", "Batch", "Enrolled", "Graduated"],
     students.map((s) => [
       s.name,
       s.course_name,
       s.parent_name ?? "",
       s.gender ?? "",
-      s.address ?? "",
       String(s.current_year),
       String(s.batch_year),
       s.enrollment_date,

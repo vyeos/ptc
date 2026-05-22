@@ -3,13 +3,18 @@ import { getCourses, type Course } from "@/lib/queries";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 export interface StudentFormData {
   name: string;
   parent_name: string;
   gender: string;
-  address: string;
   course_id: number;
   enrollment_date: string;
 }
@@ -27,10 +32,9 @@ export function StudentForm({ initial, onSubmit, onCancel }: Props) {
       name: "",
       parent_name: "",
       gender: "",
-      address: "",
       course_id: 0,
       enrollment_date: new Date().toISOString().split("T")[0],
-    }
+    },
   );
   const [saving, setSaving] = useState(false);
 
@@ -54,9 +58,9 @@ export function StudentForm({ initial, onSubmit, onCancel }: Props) {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+    <form onSubmit={handleSubmit} className="flex flex-col gap-4 p-4">
       <div className="flex flex-col gap-2">
-        <Label htmlFor="name">Name *</Label>
+        <Label htmlFor="name">Name</Label>
         <Input
           id="name"
           value={form.name}
@@ -76,8 +80,11 @@ export function StudentForm({ initial, onSubmit, onCancel }: Props) {
 
       <div className="flex flex-col gap-2">
         <Label htmlFor="gender">Gender</Label>
-        <Select value={form.gender} onValueChange={(v) => setForm({ ...form, gender: v })}>
-          <SelectTrigger>
+        <Select
+          value={form.gender}
+          onValueChange={(v) => setForm({ ...form, gender: v })}
+        >
+          <SelectTrigger >
             <SelectValue placeholder="Select gender" />
           </SelectTrigger>
           <SelectContent>
@@ -89,16 +96,7 @@ export function StudentForm({ initial, onSubmit, onCancel }: Props) {
       </div>
 
       <div className="flex flex-col gap-2">
-        <Label htmlFor="address">Address</Label>
-        <Input
-          id="address"
-          value={form.address}
-          onChange={(e) => setForm({ ...form, address: e.target.value })}
-        />
-      </div>
-
-      <div className="flex flex-col gap-2">
-        <Label htmlFor="course">Course *</Label>
+        <Label htmlFor="course">Course</Label>
         <Select
           value={form.course_id ? String(form.course_id) : ""}
           onValueChange={(v) => setForm({ ...form, course_id: Number(v) })}
@@ -122,7 +120,9 @@ export function StudentForm({ initial, onSubmit, onCancel }: Props) {
           id="enrollment_date"
           type="date"
           value={form.enrollment_date}
-          onChange={(e) => setForm({ ...form, enrollment_date: e.target.value })}
+          onChange={(e) =>
+            setForm({ ...form, enrollment_date: e.target.value })
+          }
           required
         />
       </div>
@@ -131,7 +131,12 @@ export function StudentForm({ initial, onSubmit, onCancel }: Props) {
         <Button type="submit" disabled={saving} className="flex-1">
           {saving ? "Saving..." : initial ? "Update" : "Add Student"}
         </Button>
-        <Button type="button" variant="outline" onClick={onCancel} className="flex-1">
+        <Button
+          type="button"
+          variant="outline"
+          onClick={onCancel}
+          className="flex-1"
+        >
           Cancel
         </Button>
       </div>
