@@ -15,7 +15,12 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
+        run: |
+          rustup update stable
+          rustup default stable
+          rustup component add rustc
+          rustc --version
+          cargo --version
 
       - name: Rust cache
         uses: swatinem/rust-cache@v2
@@ -53,6 +58,7 @@ jobs:
         run: |
           rustup update stable
           rustup default stable
+          rustup component add --toolchain stable-aarch64-apple-darwin rustc
           rustc --version
           cargo --version
 
