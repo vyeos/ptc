@@ -43,8 +43,9 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Plus, GraduationCap, MoreHorizontal, Trash2, Search } from "lucide-react";
+import { Plus, GraduationCap, MoreHorizontal, Trash2, Search, Upload } from "lucide-react";
 import { toast } from "sonner";
+import { importStudentsCsv } from "@/lib/import-csv";
 
 export default function Students() {
   const [tab, setTab] = useState("year1");
@@ -52,6 +53,34 @@ export default function Students() {
   const [search, setSearch] = useState("");
   const [sheetOpen, setSheetOpen] = useState(false);
   const [deleteId, setDeleteId] = useState<number | null>(null);
+  const [importing, setImporting] = useState(false);
+
+  const handleImportCsv = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = "";
+    setImporting(true);
+    try {
+      const result = await importStudentsCsv(file);
+      if (result.added > 0) {
+        toast.success(`Imported ${result.added} student${result.added > 1 ? "s" : ""}`);
+        load();
+      }
+      if (result.skipped.length > 0) {
+        toast.warning(`Skipped ${result.skipped.length} row${result.skipped.length > 1 ? "s" : ""}: ${result.skipped[0]}`);
+      }
+      if (result.errors.length > 0) {
+        toast.error(`${result.errors.length} error${result.errors.length > 1 ? "s" : ""}: ${result.errors[0]}`);
+      }
+      if (result.added === 0 && result.errors.length === 0 && result.skipped.length === 0) {
+        toast.info("No students found in CSV");
+      }
+    } catch {
+      toast.error("Failed to import CSV");
+    } finally {
+      setImporting(false);
+    }
+  };
 
   const load = useCallback(async () => {
     const filter =
@@ -117,6 +146,19 @@ export default function Students() {
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
+
+          <Button variant="outline" disabled={importing} asChild>
+            <label className="cursor-pointer">
+              <Upload data-icon="inline-start" />
+              {importing ? "Importing..." : "Import CSV"}
+              <input
+                type="file"
+                accept=".csv"
+                className="hidden"
+                onChange={handleImportCsv}
+              />
+            </label>
+          </Button>
 
           <Button onClick={() => setSheetOpen(true)}>
             <Plus data-icon="inline-start" />
