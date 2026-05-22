@@ -6,9 +6,13 @@ import {
   getStudentFeeSummary,
   getFeePayments,
   deleteFeePayment,
+  getFeeTypes,
+  addStudentFee,
+  deleteStudentFee,
   type StudentWithCourse,
   type StudentFeeSummary,
   type FeePayment,
+  type FeeType,
 } from "@/lib/queries";
 import { StudentForm, type StudentFormData } from "@/components/StudentForm";
 import { FeePaymentDialog } from "@/components/FeePaymentDialog";
@@ -35,6 +39,15 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -68,6 +81,13 @@ export default function StudentDetail() {
   const [editOpen, setEditOpen] = useState(false);
   const [paymentOpen, setPaymentOpen] = useState(false);
   const [deletePaymentId, setDeletePaymentId] = useState<number | null>(null);
+  const [addFeeOpen, setAddFeeOpen] = useState(false);
+  const [allFeeTypes, setAllFeeTypes] = useState<FeeType[]>([]);
+  const [selectedFeeTypeId, setSelectedFeeTypeId] = useState<string>("");
+  const [feeAmount, setFeeAmount] = useState("");
+  const [feeYear, setFeeYear] = useState("1");
+  const [addingFee, setAddingFee] = useState(false);
+  const [deleteFeeId, setDeleteFeeId] = useState<number | null>(null);
 
   const load = useCallback(async () => {
     const [s, fs, fp] = await Promise.all([
@@ -98,6 +118,53 @@ export default function StudentDetail() {
     toast.success("Payment deleted");
     load();
   };
+
+  const openAddFeeDialog = async () => {
+    const types = await getFeeTypes();
+    setAllFeeTypes(types);
+    setSelectedFeeTypeId("");
+    setFeeAmount("");
+    setFeeYear("1");
+    setAddFeeOpen(true);
+  };
+
+  const handleAddFee = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedFeeTypeId) return;
+    setAddingFee(true);
+    try {
+      await addStudentFee(
+        studentId,
+        Number(selectedFeeTypeId),
+        Number(feeAmount),
+        Number(feeYear)
+      );
+      toast.success("Fee type added");
+      setAddFeeOpen(false);
+      load();
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Failed to add fee");
+    } finally {
+      setAddingFee(false);
+    }
+  };
+
+  const handleDeleteFee = async () => {
+    if (deleteFeeId === null) return;
+    const ok = await deleteStudentFee(deleteFeeId);
+    if (!ok) {
+      toast.error("Cannot remove: payments exist for this fee");
+      setDeleteFeeId(null);
+      return;
+    }
+    toast.success("Fee type removed");
+    setDeleteFeeId(null);
+    load();
+  };
+
+  const selectedFeeType = allFeeTypes.find(
+    (ft) => ft.id === Number(selectedFeeTypeId)
+  );
 
   if (!student) {
     return <div className="flex items-center justify-center p-8">Loading...</div>;
@@ -173,8 +240,14 @@ export default function StudentDetail() {
       </div>
 
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>Fee Summary</CardTitle>
+          {!student.graduated_date && (
+            <Button size="sm" variant="outline" onClick={openAddFeeDialog}>
+              <Plus data-icon="inline-start" />
+              Add Fee Type
+            </Button>
+          )}
         </CardHeader>
         <CardContent>
           {feeSummary.length === 0 ? (
@@ -189,6 +262,7 @@ export default function StudentDetail() {
                   <TableHead className="text-right">Paid</TableHead>
                   <TableHead className="text-right">Remaining</TableHead>
                   <TableHead>Status</TableHead>
+                  {!student.graduated_date && <TableHead className="w-10" />}
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -208,6 +282,18 @@ export default function StudentDetail() {
                         <Badge variant="destructive">Unpaid</Badge>
                       )}
                     </TableCell>
+                    {!student.graduated_date && (
+                      <TableCell>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="size-8 text-destructive"
+                          onClick={() => setDeleteFeeId(f.student_fee_id)}
+                        >
+                          <Trash2 className="size-4" />
+                        </Button>
+                      </TableCell>
+                    )}
                   </TableRow>
                 ))}
               </TableBody>
@@ -312,6 +398,86 @@ export default function StudentDetail() {
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={handleDeletePayment}>Delete</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <Dialog open={addFeeOpen} onOpenChange={setAddFeeOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add Fee Type</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleAddFee} className="flex flex-col gap-4">
+            <div className="flex flex-col gap-2">
+              <Label>Fee Type</Label>
+              <Select
+                value={selectedFeeTypeId}
+                onValueChange={(v) => {
+                  setSelectedFeeTypeId(v);
+                  const ft = allFeeTypes.find((t) => t.id === Number(v));
+                  if (ft) setFeeAmount(String(ft.amount));
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select fee type" />
+                </SelectTrigger>
+                <SelectContent>
+                  {allFeeTypes.map((ft) => (
+                    <SelectItem key={ft.id} value={String(ft.id)}>
+                      {ft.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex flex-col gap-2">
+              <Label>Amount</Label>
+              <Input
+                type="number"
+                min={0}
+                value={feeAmount}
+                onChange={(e) => setFeeAmount(e.target.value)}
+                required
+              />
+              {selectedFeeType && (
+                <p className="text-xs text-muted-foreground">
+                  Default: {formatCurrency(selectedFeeType.amount)}
+                </p>
+              )}
+            </div>
+            <div className="flex flex-col gap-2">
+              <Label>Academic Year</Label>
+              <Select value={feeYear} onValueChange={setFeeYear}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="1">Year 1</SelectItem>
+                  <SelectItem value="2">Year 2</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <Button type="submit" disabled={addingFee || !selectedFeeTypeId}>
+              {addingFee ? "Adding..." : "Add Fee"}
+            </Button>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog
+        open={deleteFeeId !== null}
+        onOpenChange={(open) => !open && setDeleteFeeId(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove Fee Type?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will remove the fee from this student. Cannot remove if payments exist.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteFee}>Remove</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

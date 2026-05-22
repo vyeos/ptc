@@ -355,6 +355,35 @@ export async function getStudentFeeSummary(studentId: number): Promise<StudentFe
   );
 }
 
+export async function addStudentFee(
+  studentId: number,
+  feeTypeId: number,
+  totalAmount: number,
+  academicYear: number
+): Promise<void> {
+  const db = await getDb();
+  const existing = await db.select<{ id: number }[]>(
+    "SELECT id FROM student_fees WHERE student_id = ? AND fee_type_id = ? AND academic_year = ?",
+    [studentId, feeTypeId, academicYear]
+  );
+  if (existing.length > 0) throw new Error("This fee type is already assigned for this year");
+  await db.execute(
+    "INSERT INTO student_fees (student_id, fee_type_id, total_amount, academic_year) VALUES (?, ?, ?, ?)",
+    [studentId, feeTypeId, totalAmount, academicYear]
+  );
+}
+
+export async function deleteStudentFee(studentFeeId: number): Promise<boolean> {
+  const db = await getDb();
+  const payments = await db.select<{ cnt: number }[]>(
+    "SELECT COUNT(*) as cnt FROM fee_payments WHERE student_fee_id = ?",
+    [studentFeeId]
+  );
+  if (payments[0].cnt > 0) return false;
+  await db.execute("DELETE FROM student_fees WHERE id = ?", [studentFeeId]);
+  return true;
+}
+
 // --- Fee Payments ---
 
 export async function getFeePayments(studentId: number): Promise<FeePayment[]> {

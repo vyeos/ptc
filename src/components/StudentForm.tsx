@@ -47,7 +47,7 @@ export function StudentForm({ initial, onSubmit, onCancel }: Props) {
     });
   }, []);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.SubmitEvent) => {
     e.preventDefault();
     setSaving(true);
     try {
@@ -97,7 +97,7 @@ export function StudentForm({ initial, onSubmit, onCancel }: Props) {
       <div className="flex flex-col gap-2">
         <Label htmlFor="course">Course</Label>
         <Select
-          value={String(form.course_id || (courses.length > 0 ? courses[0].id : 0))}
+          value={form.course_id ? String(form.course_id) : ""}
           onValueChange={(v) => setForm({ ...form, course_id: Number(v) })}
         >
           <SelectTrigger>
@@ -127,7 +127,7 @@ export function StudentForm({ initial, onSubmit, onCancel }: Props) {
       </div>
 
       <div className="flex gap-2 pt-2">
-        <Button type="submit" disabled={saving || form.course_id === 0} className="flex-1">
+        <Button type="submit" disabled={saving} className="flex-1">
           {saving ? "Saving..." : initial ? "Update" : "Add Student"}
         </Button>
         <Button
