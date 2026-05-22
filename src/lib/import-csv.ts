@@ -53,9 +53,33 @@ function matchHeader(headers: string[]): Record<string, number> {
   };
 }
 
+export interface ImportConflict {
+  rowIndex: number;
+  existingStudent: {
+    id: number;
+    name: string;
+    parent_name: string | null;
+    gender: string | null;
+    course_name: string;
+    enrollment_date: string;
+  };
+  imported: {
+    name: string;
+    parent_name: string | null;
+    gender: string | null;
+    course_name: string;
+    course_id: number;
+    enrollment_date: string;
+    batch_year: number;
+  };
+  fields: string[];
+}
+
 export interface ImportResult {
   added: number;
   skipped: string[];
+  duplicates: number;
+  conflicts: ImportConflict[];
   errors: string[];
 }
 
@@ -63,12 +87,12 @@ export async function importStudentsCsv(file: File): Promise<ImportResult> {
   const text = await file.text();
   const rows = parseCsv(text);
   if (rows.length < 2) {
-    return { added: 0, skipped: [], errors: ["CSV file is empty or has no data rows"] };
+    return { added: 0, skipped: [], duplicates: 0, conflicts: [], errors: ["CSV file is empty or has no data rows"] };
   }
 
   const colMap = matchHeader(rows[0]);
   if (colMap.name === -1) {
-    return { added: 0, skipped: [], errors: ["Missing required 'Name' column"] };
+    return { added: 0, skipped: [], duplicates: 0, conflicts: [], errors: ["Missing required 'Name' column"] };
   }
 
   const courses = await getCourses();
@@ -78,13 +102,29 @@ export async function importStudentsCsv(file: File): Promise<ImportResult> {
   }
 
   if (courses.length === 0) {
-    return { added: 0, skipped: [], errors: ["No courses configured. Add a course first."] };
+    return { added: 0, skipped: [], duplicates: 0, conflicts: [], errors: ["No courses configured. Add a course first."] };
   }
 
   const defaultCourse = courses[0];
   const db = await getDb();
-  const result: ImportResult = { added: 0, skipped: [], errors: [] };
+  const result: ImportResult = { added: 0, skipped: [], duplicates: 0, conflicts: [], errors: [] };
   const today = new Date().toISOString().split("T")[0];
+
+  const existingStudents = await db.select<
+    { id: number; name: string; parent_name: string | null; gender: string | null; course_id: number; course_name: string; enrollment_date: string }[]
+  >(
+    `SELECT s.id, s.name, s.parent_name, s.gender, s.course_id, c.name as course_name, s.enrollment_date
+     FROM students s JOIN courses c ON s.course_id = c.id
+     WHERE s.graduated_date IS NULL`
+  );
+
+  const studentsByName = new Map<string, typeof existingStudents>();
+  for (const s of existingStudents) {
+    const key = s.name.toLowerCase().trim();
+    const list = studentsByName.get(key) || [];
+    list.push(s);
+    studentsByName.set(key, list);
+  }
 
   for (let i = 1; i < rows.length; i++) {
     const r = rows[i];
@@ -110,19 +150,59 @@ export async function importStudentsCsv(file: File): Promise<ImportResult> {
     const enrollDate = parseDate(enrolledStr) || today;
     const enrollYear = new Date(enrollDate).getFullYear();
     const batchYear = enrollYear + course.duration_years;
+    const parentName = get("parent") || null;
+    const gender = get("gender") || null;
+
+    const matches = studentsByName.get(name.toLowerCase().trim());
+    if (matches && matches.length > 0) {
+      const existing = matches.find(
+        (s) => s.course_name.toLowerCase() === course.name.toLowerCase()
+      ) || matches[0];
+
+      const diffFields: string[] = [];
+      if ((existing.parent_name || "") !== (parentName || ""))
+        diffFields.push("parent");
+      if ((existing.gender || "") !== (gender || ""))
+        diffFields.push("gender");
+      if (existing.course_name.toLowerCase() !== course.name.toLowerCase())
+        diffFields.push("course");
+      if (existing.enrollment_date.slice(0, 10) !== enrollDate.slice(0, 10))
+        diffFields.push("enrollment date");
+
+      if (diffFields.length === 0) {
+        result.duplicates++;
+        continue;
+      }
+
+      result.conflicts.push({
+        rowIndex: i + 1,
+        existingStudent: {
+          id: existing.id,
+          name: existing.name,
+          parent_name: existing.parent_name,
+          gender: existing.gender,
+          course_name: existing.course_name,
+          enrollment_date: existing.enrollment_date,
+        },
+        imported: {
+          name,
+          parent_name: parentName,
+          gender,
+          course_name: course.name,
+          course_id: course.id,
+          enrollment_date: enrollDate,
+          batch_year: batchYear,
+        },
+        fields: diffFields,
+      });
+      continue;
+    }
 
     try {
       const insertResult = await db.execute(
         `INSERT INTO students (name, parent_name, gender, course_id, enrollment_date, current_year, batch_year)
          VALUES (?, ?, ?, ?, ?, 1, ?)`,
-        [
-          name,
-          get("parent") || null,
-          get("gender") || null,
-          course.id,
-          enrollDate,
-          batchYear,
-        ]
+        [name, parentName, gender, course.id, enrollDate, batchYear]
       );
 
       const studentId = insertResult.lastInsertId as number;
@@ -144,6 +224,44 @@ export async function importStudentsCsv(file: File): Promise<ImportResult> {
   }
 
   return result;
+}
+
+export async function resolveConflicts(
+  conflicts: ImportConflict[],
+  resolutions: Map<number, "import" | "local">
+): Promise<{ updated: number }> {
+  const db = await getDb();
+  let updated = 0;
+
+  for (const conflict of conflicts) {
+    const resolution = resolutions.get(conflict.existingStudent.id);
+    if (resolution !== "import") continue;
+
+    const imp = conflict.imported;
+    const enrollYear = new Date(imp.enrollment_date).getFullYear();
+
+    const courses = await getCourses();
+    const course = courses.find((c) => c.id === imp.course_id);
+    const batchYear = course
+      ? enrollYear + course.duration_years
+      : imp.batch_year;
+
+    await db.execute(
+      `UPDATE students SET name = ?, parent_name = ?, gender = ?, course_id = ?, enrollment_date = ?, batch_year = ? WHERE id = ?`,
+      [
+        imp.name,
+        imp.parent_name,
+        imp.gender,
+        imp.course_id,
+        imp.enrollment_date,
+        batchYear,
+        conflict.existingStudent.id,
+      ]
+    );
+    updated++;
+  }
+
+  return { updated };
 }
 
 function parseDate(s: string): string | null {

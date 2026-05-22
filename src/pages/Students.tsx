@@ -45,7 +45,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Plus, GraduationCap, MoreHorizontal, Trash2, Search, Download } from "lucide-react";
 import { toast } from "sonner";
-import { importStudentsCsv } from "@/lib/import-csv";
+import { importStudentsCsv, resolveConflicts, type ImportConflict } from "@/lib/import-csv";
+import { ImportConflictDialog } from "@/components/ImportConflictDialog";
 
 export default function Students() {
   const [tab, setTab] = useState("year1");
@@ -54,6 +55,7 @@ export default function Students() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [deleteId, setDeleteId] = useState<number | null>(null);
   const [importing, setImporting] = useState(false);
+  const [conflicts, setConflicts] = useState<ImportConflict[]>([]);
 
   const handleImportCsv = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -66,19 +68,42 @@ export default function Students() {
         toast.success(`Imported ${result.added} student${result.added > 1 ? "s" : ""}`);
         load();
       }
+      if (result.duplicates > 0) {
+        toast.info(`${result.duplicates} duplicate${result.duplicates > 1 ? "s" : ""} skipped (identical data)`);
+      }
       if (result.skipped.length > 0) {
         toast.warning(`Skipped ${result.skipped.length} row${result.skipped.length > 1 ? "s" : ""}: ${result.skipped[0]}`);
       }
       if (result.errors.length > 0) {
         toast.error(`${result.errors.length} error${result.errors.length > 1 ? "s" : ""}: ${result.errors[0]}`);
       }
-      if (result.added === 0 && result.errors.length === 0 && result.skipped.length === 0) {
+      if (result.conflicts.length > 0) {
+        setConflicts(result.conflicts);
+      } else if (result.added === 0 && result.errors.length === 0 && result.skipped.length === 0 && result.duplicates === 0) {
         toast.info("No students found in CSV");
       }
     } catch {
       toast.error("Failed to import CSV");
     } finally {
       setImporting(false);
+    }
+  };
+
+  const handleResolveConflicts = async (resolutions: Map<number, "import" | "local">) => {
+    try {
+      const result = await resolveConflicts(conflicts, resolutions);
+      const kept = conflicts.length - result.updated;
+      if (result.updated > 0) {
+        toast.success(`Updated ${result.updated} student${result.updated > 1 ? "s" : ""} from import`);
+      }
+      if (kept > 0) {
+        toast.info(`Kept local data for ${kept} student${kept > 1 ? "s" : ""}`);
+      }
+      load();
+    } catch {
+      toast.error("Failed to resolve conflicts");
+    } finally {
+      setConflicts([]);
     }
   };
 
@@ -95,10 +120,14 @@ export default function Students() {
   }, [load]);
 
   const handleAdd = async (data: StudentFormData) => {
-    await addStudent(data);
-    setDialogOpen(false);
-    toast.success("Student added");
-    load();
+    try {
+      await addStudent(data);
+      setDialogOpen(false);
+      toast.success("Student added");
+      load();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to add student");
+    }
   };
 
   const handleDelete = async () => {
@@ -271,6 +300,13 @@ export default function Students() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <ImportConflictDialog
+        conflicts={conflicts}
+        open={conflicts.length > 0}
+        onResolve={handleResolveConflicts}
+        onCancel={() => setConflicts([])}
+      />
     </div>
   );
 }

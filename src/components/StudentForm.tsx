@@ -127,7 +127,7 @@ export function StudentForm({ initial, onSubmit, onCancel }: Props) {
       </div>
 
       <div className="flex gap-2 pt-2">
-        <Button type="submit" disabled={saving} className="flex-1">
+        <Button type="submit" disabled={saving || form.course_id === 0} className="flex-1">
           {saving ? "Saving..." : initial ? "Update" : "Add Student"}
         </Button>
         <Button
