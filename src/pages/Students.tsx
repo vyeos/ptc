@@ -43,7 +43,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Plus, GraduationCap, MoreHorizontal, Trash2, Search, Upload } from "lucide-react";
+import { Plus, GraduationCap, MoreHorizontal, Trash2, Search, Download } from "lucide-react";
 import { toast } from "sonner";
 import { importStudentsCsv } from "@/lib/import-csv";
 
@@ -149,7 +149,7 @@ export default function Students() {
 
           <Button variant="outline" disabled={importing} asChild>
             <label className="cursor-pointer">
-              <Upload data-icon="inline-start" />
+              <Download data-icon="inline-start" />
               {importing ? "Importing..." : "Import CSV"}
               <input
                 type="file"

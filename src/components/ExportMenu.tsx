@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Download, FileText, FileSpreadsheet } from "lucide-react";
+import { FileText, FileSpreadsheet, Upload } from "lucide-react";
 import { exportPendingFeesPdf, exportStudentReceiptPdf } from "@/lib/export-pdf";
 import { exportStudentsCsv, exportPaymentsCsv, exportPendingFeesCsv } from "@/lib/export-csv";
 import { toast } from "sonner";
@@ -65,8 +65,8 @@ export function ExportMenu({ context, studentId }: Props) {
     <>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="outline" size="sm">
-            <Download data-icon="inline-start" />
+          <Button variant="outline">
+            <Upload data-icon="inline-start" />
             Export
           </Button>
         </DropdownMenuTrigger>
