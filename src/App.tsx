@@ -11,6 +11,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { useEffect, useState } from "react";
 import { getDb } from "@/lib/db";
 import { getSetting } from "@/lib/queries";
+import { checkAndBackup } from "@/lib/backup";
 
 function AppLoader({ children }: { children: React.ReactNode }) {
   const [ready, setReady] = useState(false);
@@ -21,6 +22,7 @@ function AppLoader({ children }: { children: React.ReactNode }) {
       .then((dm) => {
         document.documentElement.classList.toggle("dark", dm === "true");
         setReady(true);
+        checkAndBackup().catch(() => {});
       });
   }, []);
 

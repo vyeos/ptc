@@ -13,9 +13,21 @@ import {
   type Course,
   type FeeType,
 } from "@/lib/queries";
+import {
+  performBackup,
+  pickBackupFolder,
+  type BackupFrequency,
+} from "@/lib/backup";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Card,
   CardContent,
@@ -49,7 +61,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
-import { Plus, Pencil, Trash2, Moon } from "lucide-react";
+import { Plus, Pencil, Trash2, Moon, HardDrive, FolderOpen } from "lucide-react";
 import { toast } from "sonner";
 
 export default function Settings() {
@@ -70,6 +82,11 @@ export default function Settings() {
 
   const [darkMode, setDarkMode] = useState(false);
 
+  const [backupFrequency, setBackupFrequency] = useState<BackupFrequency>("weekly");
+  const [backupFolder, setBackupFolder] = useState("");
+  const [lastBackup, setLastBackup] = useState("");
+  const [backingUp, setBackingUp] = useState(false);
+
   const [email, setEmail] = useState("");
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -88,6 +105,13 @@ export default function Settings() {
     const isDark = dm === "true";
     setDarkMode(isDark);
     document.documentElement.classList.toggle("dark", isDark);
+
+    const bf = await getSetting("backup_frequency");
+    if (bf) setBackupFrequency(bf as BackupFrequency);
+    const bfolder = await getSetting("backup_folder");
+    if (bfolder) setBackupFolder(bfolder);
+    const lb = await getSetting("last_backup");
+    if (lb) setLastBackup(lb);
   }
 
   const openCourseDialog = (course?: Course) => {
@@ -166,6 +190,39 @@ export default function Settings() {
     await setSetting("dark_mode", String(checked));
   };
 
+  const handleBackupFrequency = async (value: string) => {
+    setBackupFrequency(value as BackupFrequency);
+    await setSetting("backup_frequency", value);
+    toast.success("Backup frequency updated");
+  };
+
+  const handlePickFolder = async () => {
+    const folder = await pickBackupFolder();
+    if (folder) {
+      setBackupFolder(folder);
+      await setSetting("backup_folder", folder);
+      toast.success("Backup folder set");
+    }
+  };
+
+  const handleBackupNow = async () => {
+    if (!backupFolder) {
+      toast.error("Please choose a backup folder first");
+      return;
+    }
+    setBackingUp(true);
+    try {
+      await performBackup(backupFolder);
+      const now = new Date().toISOString();
+      setLastBackup(now);
+      toast.success("Backup created successfully");
+    } catch (err) {
+      toast.error(`Backup failed: ${err}`);
+    } finally {
+      setBackingUp(false);
+    }
+  };
+
   const handleCredentials = async (e: React.FormEvent) => {
     e.preventDefault();
     const storedPassword = await getSetting("auth_password");
@@ -203,6 +260,71 @@ export default function Settings() {
               </div>
             </div>
             <Switch checked={darkMode} onCheckedChange={handleDarkMode} />
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Data Backup</CardTitle>
+          <CardDescription>
+            Automatically back up your database to protect against data loss
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-5">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <HardDrive className="size-5 text-muted-foreground" />
+              <div>
+                <p className="text-sm font-medium">Backup Frequency</p>
+                <p className="text-sm text-muted-foreground">
+                  How often to create automatic backups
+                </p>
+              </div>
+            </div>
+            <Select value={backupFrequency} onValueChange={handleBackupFrequency}>
+              <SelectTrigger className="w-32">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="daily">Daily</SelectItem>
+                <SelectItem value="weekly">Weekly</SelectItem>
+                <SelectItem value="monthly">Monthly</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <Separator />
+
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <FolderOpen className="size-5 text-muted-foreground" />
+              <div>
+                <p className="text-sm font-medium">Backup Folder</p>
+                <p className="text-sm text-muted-foreground truncate max-w-xs">
+                  {backupFolder || "No folder selected"}
+                </p>
+              </div>
+            </div>
+            <Button variant="outline" size="sm" onClick={handlePickFolder}>
+              Choose Folder
+            </Button>
+          </div>
+
+          <Separator />
+
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium">Last Backup</p>
+              <p className="text-sm text-muted-foreground">
+                {lastBackup
+                  ? new Date(lastBackup).toLocaleString()
+                  : "No backups yet"}
+              </p>
+            </div>
+            <Button size="sm" onClick={handleBackupNow} disabled={backingUp}>
+              {backingUp ? "Backing up…" : "Backup Now"}
+            </Button>
           </div>
         </CardContent>
       </Card>

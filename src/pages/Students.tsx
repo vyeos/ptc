@@ -45,7 +45,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Plus, GraduationCap, MoreHorizontal, Trash2, Search, Download } from "lucide-react";
 import { toast } from "sonner";
-import { importStudentsCsv, resolveConflicts, type ImportConflict } from "@/lib/import-csv";
+import { importStudentsCsv, resolveConflicts, type ImportConflict, type ImportResult } from "@/lib/import-csv";
+import { importStudentsDb } from "@/lib/import-db";
 import { ImportConflictDialog } from "@/components/ImportConflictDialog";
 
 export default function Students() {
@@ -58,6 +59,27 @@ export default function Students() {
   const [importing, setImporting] = useState(false);
   const [conflicts, setConflicts] = useState<ImportConflict[]>([]);
 
+  const showImportResult = (result: ImportResult, label: string) => {
+    if (result.added > 0) {
+      toast.success(`Imported ${result.added} student${result.added > 1 ? "s" : ""}`);
+      load();
+    }
+    if (result.duplicates > 0) {
+      toast.info(`${result.duplicates} duplicate${result.duplicates > 1 ? "s" : ""} skipped (identical data)`);
+    }
+    if (result.skipped.length > 0) {
+      toast.warning(`Skipped ${result.skipped.length} row${result.skipped.length > 1 ? "s" : ""}: ${result.skipped[0]}`);
+    }
+    if (result.errors.length > 0) {
+      toast.error(`${result.errors.length} error${result.errors.length > 1 ? "s" : ""}: ${result.errors[0]}`);
+    }
+    if (result.conflicts.length > 0) {
+      setConflicts(result.conflicts);
+    } else if (result.added === 0 && result.errors.length === 0 && result.skipped.length === 0 && result.duplicates === 0) {
+      toast.info(`No students found in ${label}`);
+    }
+  };
+
   const handleImportCsv = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -65,26 +87,23 @@ export default function Students() {
     setImporting(true);
     try {
       const result = await importStudentsCsv(file);
-      if (result.added > 0) {
-        toast.success(`Imported ${result.added} student${result.added > 1 ? "s" : ""}`);
-        load();
-      }
-      if (result.duplicates > 0) {
-        toast.info(`${result.duplicates} duplicate${result.duplicates > 1 ? "s" : ""} skipped (identical data)`);
-      }
-      if (result.skipped.length > 0) {
-        toast.warning(`Skipped ${result.skipped.length} row${result.skipped.length > 1 ? "s" : ""}: ${result.skipped[0]}`);
-      }
-      if (result.errors.length > 0) {
-        toast.error(`${result.errors.length} error${result.errors.length > 1 ? "s" : ""}: ${result.errors[0]}`);
-      }
-      if (result.conflicts.length > 0) {
-        setConflicts(result.conflicts);
-      } else if (result.added === 0 && result.errors.length === 0 && result.skipped.length === 0 && result.duplicates === 0) {
-        toast.info("No students found in CSV");
-      }
+      showImportResult(result, "CSV");
     } catch {
       toast.error("Failed to import CSV");
+    } finally {
+      setImporting(false);
+    }
+  };
+
+  const handleImportDb = async () => {
+    setImporting(true);
+    try {
+      const result = await importStudentsDb();
+      if (result) {
+        showImportResult(result, "database");
+      }
+    } catch {
+      toast.error("Failed to import database");
     } finally {
       setImporting(false);
     }
@@ -177,18 +196,30 @@ export default function Students() {
             </AlertDialogContent>
           </AlertDialog>
 
-          <Button variant="outline" disabled={importing} asChild>
-            <label className="cursor-pointer">
-              <Download data-icon="inline-start" />
-              {importing ? "Importing..." : "Import CSV"}
-              <input
-                type="file"
-                accept=".csv"
-                className="hidden"
-                onChange={handleImportCsv}
-              />
-            </label>
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" disabled={importing}>
+                <Download data-icon="inline-start" />
+                {importing ? "Importing..." : "Import"}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem asChild>
+                <label className="cursor-pointer">
+                  Import CSV
+                  <input
+                    type="file"
+                    accept=".csv"
+                    className="hidden"
+                    onChange={handleImportCsv}
+                  />
+                </label>
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleImportDb}>
+                Import Database (.db)
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
 
           <Button onClick={() => setDialogOpen(true)}>
             <Plus data-icon="inline-start" />
