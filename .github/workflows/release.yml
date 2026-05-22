@@ -19,7 +19,11 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
+        run: |
+          rustup update stable
+          rustup default stable
+          rustc --version
+          cargo --version
 
       - name: Rust cache
         uses: swatinem/rust-cache@v2
@@ -39,6 +43,7 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
+          args: --verbose
           tagName: v__VERSION__
           releaseName: PTC Fee v__VERSION__
           releaseBody: ""
