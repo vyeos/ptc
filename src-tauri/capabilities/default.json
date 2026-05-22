@@ -11,6 +11,8 @@
     "sql:allow-execute",
     "sql:allow-select",
     "fs:default",
+    "fs:allow-write-text-file",
+    "fs:allow-write-file",
     "dialog:default",
     "updater:default",
     "process:allow-restart"

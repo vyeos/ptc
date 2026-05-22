@@ -83,6 +83,14 @@ export async function setSetting(key: string, value: string): Promise<void> {
 
 // --- Courses ---
 
+export async function getBatchYears(): Promise<number[]> {
+  const db = await getDb();
+  const rows: { batch_year: number }[] = await db.select(
+    "SELECT DISTINCT batch_year FROM students ORDER BY batch_year DESC"
+  );
+  return rows.map((r) => r.batch_year);
+}
+
 export async function getCourses(activeOnly = true): Promise<Course[]> {
   const db = await getDb();
   if (activeOnly) {

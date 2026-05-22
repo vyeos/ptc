@@ -1,6 +1,8 @@
+import { save } from "@tauri-apps/plugin-dialog";
+import { writeTextFile } from "@tauri-apps/plugin-fs";
 import { getStudents, getFeePayments, getPendingFeeStudents } from "./queries";
 
-function downloadCsv(filename: string, headers: string[], rows: string[][]) {
+function buildCsv(headers: string[], rows: string[][]): string {
   const escape = (v: string) => {
     if (v.includes(",") || v.includes('"') || v.includes("\n")) {
       return `"${v.replace(/"/g, '""')}"`;
@@ -12,18 +14,21 @@ function downloadCsv(filename: string, headers: string[], rows: string[][]) {
     headers.map(escape).join(","),
     ...rows.map((row) => row.map(escape).join(",")),
   ];
-  const blob = new Blob([lines.join("\n")], { type: "text/csv" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  a.click();
-  URL.revokeObjectURL(url);
+  return lines.join("\n");
+}
+
+async function saveCsv(filename: string, headers: string[], rows: string[][]) {
+  const path = await save({
+    defaultPath: filename,
+    filters: [{ name: "CSV", extensions: ["csv"] }],
+  });
+  if (!path) return;
+  await writeTextFile(path, buildCsv(headers, rows));
 }
 
 export async function exportStudentsCsv(filter?: { graduated?: boolean }) {
   const students = await getStudents(filter ?? { graduated: false });
-  downloadCsv(
+  await saveCsv(
     "students.csv",
     ["Name", "Course", "Parent", "Gender", "Year", "Batch", "Enrolled", "Graduated"],
     students.map((s) => [
@@ -42,7 +47,7 @@ export async function exportStudentsCsv(filter?: { graduated?: boolean }) {
 export async function exportPaymentsCsv(studentId?: number) {
   if (studentId) {
     const payments = await getFeePayments(studentId);
-    downloadCsv(
+    await saveCsv(
       `payments-student-${studentId}.csv`,
       ["Date", "Fee Type", "Method", "Amount", "Notes"],
       payments.map((p) => [
@@ -59,7 +64,7 @@ export async function exportPaymentsCsv(studentId?: number) {
 export async function exportPendingFeesCsv(batchYear?: number) {
   const students = await getPendingFeeStudents();
   const filtered = batchYear ? students.filter((s) => s.batch_year === batchYear) : students;
-  downloadCsv(
+  await saveCsv(
     `pending-fees${batchYear ? `-${batchYear}` : ""}.csv`,
     ["Name", "Course", "Year", "Batch", "Total Fee", "Paid", "Pending"],
     filtered.map((s) => [

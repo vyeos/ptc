@@ -1,9 +1,21 @@
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import { save } from "@tauri-apps/plugin-dialog";
+import { writeFile } from "@tauri-apps/plugin-fs";
 import { getPendingFeeStudents, getStudentFeeSummary, getFeePayments, getStudent } from "./queries";
 
 function formatCurrency(n: number) {
-  return new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(n);
+  return new Intl.NumberFormat("en-IN", { maximumFractionDigits: 0 }).format(n);
+}
+
+async function savePdf(doc: jsPDF, defaultFilename: string) {
+  const path = await save({
+    defaultPath: defaultFilename,
+    filters: [{ name: "PDF", extensions: ["pdf"] }],
+  });
+  if (!path) return;
+  const arrayBuffer = doc.output("arraybuffer");
+  await writeFile(path, new Uint8Array(arrayBuffer));
 }
 
 export async function exportPendingFeesPdf(batchYear?: number) {
@@ -34,7 +46,7 @@ export async function exportPendingFeesPdf(batchYear?: number) {
     ]),
   });
 
-  doc.save(`pending-fees${batchYear ? `-${batchYear}` : ""}.pdf`);
+  await savePdf(doc, `pending-fees${batchYear ? `-${batchYear}` : ""}.pdf`);
 }
 
 export async function exportStudentReceiptPdf(studentId: number) {
@@ -88,5 +100,5 @@ export async function exportStudentReceiptPdf(studentId: number) {
     });
   }
 
-  doc.save(`receipt-${student.name.replace(/\s+/g, "-").toLowerCase()}.pdf`);
+  await savePdf(doc, `receipt-${student.name.replace(/\s+/g, "-").toLowerCase()}.pdf`);
 }

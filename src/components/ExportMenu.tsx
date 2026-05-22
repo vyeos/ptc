@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -13,11 +13,18 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { FileText, FileSpreadsheet, Upload } from "lucide-react";
 import { exportPendingFeesPdf, exportStudentReceiptPdf } from "@/lib/export-pdf";
 import { exportStudentsCsv, exportPaymentsCsv, exportPendingFeesCsv } from "@/lib/export-csv";
+import { getBatchYears } from "@/lib/queries";
 import { toast } from "sonner";
 
 interface Props {
@@ -27,7 +34,12 @@ interface Props {
 
 export function ExportMenu({ context, studentId }: Props) {
   const [batchDialog, setBatchDialog] = useState<{ action: string } | null>(null);
-  const [batchYear, setBatchYear] = useState(String(new Date().getFullYear()));
+  const [batchYear, setBatchYear] = useState("all");
+  const [batchYears, setBatchYears] = useState<number[]>([]);
+
+  useEffect(() => {
+    getBatchYears().then(setBatchYears);
+  }, []);
 
   const handleExport = async (action: string, batch?: number) => {
     try {
@@ -56,7 +68,7 @@ export function ExportMenu({ context, studentId }: Props) {
 
   const handleBatchConfirm = () => {
     if (!batchDialog) return;
-    const year = batchYear ? Number(batchYear) : undefined;
+    const year = batchYear !== "all" ? Number(batchYear) : undefined;
     handleExport(batchDialog.action, year);
     setBatchDialog(null);
   };
@@ -110,13 +122,20 @@ export function ExportMenu({ context, studentId }: Props) {
           </DialogHeader>
           <div className="flex flex-col gap-4">
             <div className="flex flex-col gap-2">
-              <Label>Batch Year (leave empty for all)</Label>
-              <Input
-                type="number"
-                value={batchYear}
-                onChange={(e) => setBatchYear(e.target.value)}
-                placeholder="e.g. 2026"
-              />
+              <Label>Batch Year</Label>
+              <Select value={batchYear} onValueChange={setBatchYear}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Batches</SelectItem>
+                  {batchYears.map((year) => (
+                    <SelectItem key={year} value={String(year)}>
+                      {year}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="flex gap-2">
               <Button onClick={handleBatchConfirm}>Export</Button>
