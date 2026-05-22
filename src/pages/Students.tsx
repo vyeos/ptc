@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
-import { Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import {
   getStudents,
   addStudent,
@@ -49,6 +49,7 @@ import { importStudentsCsv, resolveConflicts, type ImportConflict } from "@/lib/
 import { ImportConflictDialog } from "@/components/ImportConflictDialog";
 
 export default function Students() {
+  const navigate = useNavigate();
   const [tab, setTab] = useState("year1");
   const [students, setStudents] = useState<StudentWithCourse[]>([]);
   const [search, setSearch] = useState("");
@@ -231,15 +232,12 @@ export default function Students() {
                 </TableHeader>
                 <TableBody>
                   {students.map((s) => (
-                    <TableRow key={s.id}>
-                      <TableCell>
-                        <Link
-                          to={`/students/${s.id}`}
-                          className="font-medium text-primary underline-offset-4 hover:underline"
-                        >
-                          {s.name}
-                        </Link>
-                      </TableCell>
+                    <TableRow
+                      key={s.id}
+                      className="cursor-pointer"
+                      onClick={() => navigate(`/students/${s.id}`)}
+                    >
+                      <TableCell className="font-medium">{s.name}</TableCell>
                       <TableCell>
                         <Badge variant="secondary">{s.course_name}</Badge>
                       </TableCell>
@@ -249,7 +247,7 @@ export default function Students() {
                         {new Date(s.enrollment_date).toLocaleDateString("en-IN")}
                       </TableCell>
                       {tab !== "archived" && (
-                        <TableCell>
+                        <TableCell onClick={(e) => e.stopPropagation()}>
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                               <Button variant="ghost" size="icon" className="size-8">
