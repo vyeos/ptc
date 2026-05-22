@@ -84,13 +84,12 @@ export function StudentForm({ initial, onSubmit, onCancel }: Props) {
           value={form.gender}
           onValueChange={(v) => setForm({ ...form, gender: v })}
         >
-          <SelectTrigger >
+          <SelectTrigger>
             <SelectValue placeholder="Select gender" />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="male">Male</SelectItem>
             <SelectItem value="female">Female</SelectItem>
-            <SelectItem value="other">Other</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -98,7 +97,7 @@ export function StudentForm({ initial, onSubmit, onCancel }: Props) {
       <div className="flex flex-col gap-2">
         <Label htmlFor="course">Course</Label>
         <Select
-          value={form.course_id ? String(form.course_id) : ""}
+          value={String(form.course_id || (courses.length > 0 ? courses[0].id : 0))}
           onValueChange={(v) => setForm({ ...form, course_id: Number(v) })}
         >
           <SelectTrigger>
