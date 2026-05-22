@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { getDashboardStats, getPendingFeeStudents, type DashboardStats } from "@/lib/queries";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -12,6 +12,7 @@ function formatCurrency(n: number) {
 }
 
 export default function Dashboard() {
+  const navigate = useNavigate();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [pending, setPending] = useState<Awaited<ReturnType<typeof getPendingFeeStudents>>>([]);
 
@@ -64,7 +65,7 @@ export default function Dashboard() {
             <IndianRupee className="size-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600">{formatCurrency(stats.totalCollected)}</div>
+            <div className="text-2xl font-bold text-success">{formatCurrency(stats.totalCollected)}</div>
           </CardContent>
         </Card>
 
@@ -102,12 +103,12 @@ export default function Dashboard() {
               </TableHeader>
               <TableBody>
                 {pending.map((s) => (
-                  <TableRow key={s.student_id}>
-                    <TableCell>
-                      <Link to={`/students/${s.student_id}`} className="text-primary underline-offset-4 hover:underline">
-                        {s.student_name}
-                      </Link>
-                    </TableCell>
+                  <TableRow
+                    key={s.student_id}
+                    className="cursor-pointer"
+                    onClick={() => navigate(`/students/${s.student_id}`)}
+                  >
+                    <TableCell>{s.student_name}</TableCell>
                     <TableCell>{s.course_name}</TableCell>
                     <TableCell>
                       <Badge variant="secondary">Year {s.current_year}</Badge>

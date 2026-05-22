@@ -223,7 +223,7 @@ export default function StudentDetail() {
             <CardTitle>Fee Overview</CardTitle>
             <CardDescription>
               Total: {formatCurrency(totalFee)} &middot; Paid:{" "}
-              <span className="text-green-600">{formatCurrency(totalPaid)}</span>{" "}
+              <span className="text-success">{formatCurrency(totalPaid)}</span>{" "}
               &middot; Remaining:{" "}
               <span className="text-destructive">{formatCurrency(totalRemaining)}</span>
             </CardDescription>
@@ -275,9 +275,9 @@ export default function StudentDetail() {
                     <TableCell className="text-right">{formatCurrency(f.remaining)}</TableCell>
                     <TableCell>
                       {f.remaining === 0 ? (
-                        <Badge className="bg-green-600 text-white">Paid</Badge>
+                        <Badge className="bg-success/10 text-success dark:bg-success/20">Paid</Badge>
                       ) : f.paid_amount > 0 ? (
-                        <Badge className="bg-yellow-500 text-white">Partial</Badge>
+                        <Badge className="bg-warning/10 text-warning dark:bg-warning/20">Partial</Badge>
                       ) : (
                         <Badge variant="destructive">Unpaid</Badge>
                       )}
