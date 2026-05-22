@@ -10,12 +10,18 @@ import Settings from "@/pages/Settings";
 import { Toaster } from "@/components/ui/sonner";
 import { useEffect, useState } from "react";
 import { getDb } from "@/lib/db";
+import { getSetting } from "@/lib/queries";
 
 function AppLoader({ children }: { children: React.ReactNode }) {
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    getDb().then(() => setReady(true));
+    getDb()
+      .then(() => getSetting("dark_mode"))
+      .then((dm) => {
+        document.documentElement.classList.toggle("dark", dm === "true");
+        setReady(true);
+      });
   }, []);
 
   if (!ready) {

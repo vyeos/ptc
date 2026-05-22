@@ -48,7 +48,8 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Separator } from "@/components/ui/separator";
-import { Plus, Pencil, Trash2 } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Plus, Pencil, Trash2, Moon } from "lucide-react";
 import { toast } from "sonner";
 
 export default function Settings() {
@@ -67,6 +68,8 @@ export default function Settings() {
 
   const [deleteTarget, setDeleteTarget] = useState<{ type: "course" | "fee"; id: number } | null>(null);
 
+  const [darkMode, setDarkMode] = useState(false);
+
   const [email, setEmail] = useState("");
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -81,6 +84,10 @@ export default function Settings() {
     setFeeTypes(f.filter((x) => x.is_active));
     const e = await getSetting("auth_email");
     if (e) setEmail(e);
+    const dm = await getSetting("dark_mode");
+    const isDark = dm === "true";
+    setDarkMode(isDark);
+    document.documentElement.classList.toggle("dark", isDark);
   }
 
   const openCourseDialog = (course?: Course) => {
@@ -153,6 +160,12 @@ export default function Settings() {
     loadAll();
   };
 
+  const handleDarkMode = async (checked: boolean) => {
+    setDarkMode(checked);
+    document.documentElement.classList.toggle("dark", checked);
+    await setSetting("dark_mode", String(checked));
+  };
+
   const handleCredentials = async (e: React.FormEvent) => {
     e.preventDefault();
     const storedPassword = await getSetting("auth_password");
@@ -172,6 +185,27 @@ export default function Settings() {
   return (
     <div className="flex flex-col gap-6 p-6">
       <h2 className="text-2xl font-semibold">Settings</h2>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Appearance</CardTitle>
+          <CardDescription>Customize the look of the app</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Moon className="size-5 text-muted-foreground" />
+              <div>
+                <p className="text-sm font-medium">Dark Mode</p>
+                <p className="text-sm text-muted-foreground">
+                  Switch to a darker color scheme
+                </p>
+              </div>
+            </div>
+            <Switch checked={darkMode} onCheckedChange={handleDarkMode} />
+          </div>
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
