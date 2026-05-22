@@ -277,7 +277,7 @@ export default function StudentDetail() {
                       {f.remaining === 0 ? (
                         <Badge className="bg-success/10 text-success dark:bg-success/20">Paid</Badge>
                       ) : f.paid_amount > 0 ? (
-                        <Badge className="bg-warning/10 text-warning dark:bg-warning/20">Partial</Badge>
+                        <Badge className="bg-warning/10 text-warning dark:bg-warning/20">Pending</Badge>
                       ) : (
                         <Badge variant="destructive">Unpaid</Badge>
                       )}
