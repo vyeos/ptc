@@ -1,6 +1,17 @@
 import { NavLink, Outlet } from "react-router-dom";
 import { useAuth } from "@/lib/auth-context";
 import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { LayoutDashboard, Users, Settings, LogOut } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -40,14 +51,29 @@ export default function Layout() {
           ))}
         </nav>
         <div className="border-t p-2">
-          <Button
-            variant="ghost"
-            className="w-full justify-start gap-3"
-            onClick={logout}
-          >
-            <LogOut className="size-4" />
-            Logout
-          </Button>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button
+                variant="destructive"
+                className="w-full justify-start gap-3"
+              >
+                <LogOut className="size-4" />
+                Logout
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Confirm Logout</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Are you sure you want to logout? You will need to sign in again to access your account.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={logout}>Logout</AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </div>
       </aside>
       <main className="flex-1 overflow-auto">
