@@ -484,6 +484,36 @@ export async function deleteFeePayment(id: number): Promise<void> {
   await db.execute("DELETE FROM fee_payments WHERE id = ?", [id]);
 }
 
+// --- Quick Payment (search active students) ---
+
+export async function searchActiveStudents(search: string): Promise<
+  { id: number; name: string; course_name: string; current_year: number }[]
+> {
+  const db = await getDb();
+  return db.select(
+    `SELECT s.id, s.name, c.name as course_name, s.current_year
+     FROM students s
+     JOIN courses c ON s.course_id = c.id
+     WHERE s.graduated_date IS NULL AND s.name LIKE ?
+     ORDER BY s.name
+     LIMIT 20`,
+    [`%${search}%`]
+  );
+}
+
+export async function getAllActiveStudents(): Promise<
+  { id: number; name: string; course_name: string; current_year: number }[]
+> {
+  const db = await getDb();
+  return db.select(
+    `SELECT s.id, s.name, c.name as course_name, s.current_year
+     FROM students s
+     JOIN courses c ON s.course_id = c.id
+     WHERE s.graduated_date IS NULL
+     ORDER BY s.name`
+  );
+}
+
 // --- Dashboard Stats ---
 
 export interface DashboardStats {

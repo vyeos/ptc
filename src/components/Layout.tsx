@@ -16,6 +16,7 @@ import {
 import {
   LayoutDashboard,
   Users,
+  IndianRupee,
   Settings,
   LogOut,
   Moon,
@@ -35,6 +36,7 @@ import type { UpdateStatus } from "@/lib/updater";
 const navItems = [
   { to: "/", icon: LayoutDashboard, label: "Dashboard" },
   { to: "/students", icon: Users, label: "Students" },
+  { to: "/payments", icon: IndianRupee, label: "Payments" },
   { to: "/settings", icon: Settings, label: "Settings" },
 ];
 

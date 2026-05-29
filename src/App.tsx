@@ -7,6 +7,7 @@ import Dashboard from "@/pages/Dashboard";
 import Students from "@/pages/Students";
 import StudentDetail from "@/pages/StudentDetail";
 import Settings from "@/pages/Settings";
+import Payments from "@/pages/Payments";
 import { Toaster } from "@/components/ui/sonner";
 import { useEffect, useState } from "react";
 import { getDb } from "@/lib/db";
@@ -54,6 +55,7 @@ export default function App() {
               <Route path="/" element={<Dashboard />} />
               <Route path="/students" element={<Students />} />
               <Route path="/students/:id" element={<StudentDetail />} />
+              <Route path="/payments" element={<Payments />} />
               <Route path="/settings" element={<Settings />} />
             </Route>
           </Routes>
