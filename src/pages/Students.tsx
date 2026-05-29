@@ -63,7 +63,6 @@ export default function Students() {
   const showImportResult = (result: ImportResult, label: string) => {
     if (result.added > 0) {
       toast.success(`Imported ${result.added} student${result.added > 1 ? "s" : ""}`);
-      if (tab !== "year1") setTab("year1");
     }
     if (result.duplicates > 0) {
       toast.info(`${result.duplicates} duplicate${result.duplicates > 1 ? "s" : ""} skipped (identical data)`);
@@ -117,7 +116,6 @@ export default function Students() {
       const kept = conflicts.length - result.updated;
       if (result.updated > 0) {
         toast.success(`Updated ${result.updated} student${result.updated > 1 ? "s" : ""} from import`);
-        if (tab !== "year1") setTab("year1");
       }
       if (kept > 0) {
         toast.info(`Kept local data for ${kept} student${kept > 1 ? "s" : ""}`);

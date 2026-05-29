@@ -53,6 +53,20 @@ function matchHeader(headers: string[]): Record<string, number> {
   };
 }
 
+export interface ConflictFeeSummary {
+  fee_type_name: string;
+  total_amount: number;
+  paid_amount: number;
+  remaining: number;
+}
+
+export interface ConflictPayment {
+  fee_type_name: string;
+  amount: number;
+  payment_method: string;
+  payment_date: string;
+}
+
 export interface ImportConflict {
   rowIndex: number;
   existingStudent: {
@@ -62,6 +76,13 @@ export interface ImportConflict {
     gender: string | null;
     course_name: string;
     enrollment_date: string;
+    current_year: number;
+    batch_year: number;
+    total_fee: number;
+    total_paid: number;
+    total_pending: number;
+    fees: ConflictFeeSummary[];
+    payments: ConflictPayment[];
   };
   imported: {
     name: string;
@@ -111,9 +132,9 @@ export async function importStudentsCsv(file: File): Promise<ImportResult> {
   const today = new Date().toISOString().split("T")[0];
 
   const existingStudents = await db.select<
-    { id: number; name: string; parent_name: string | null; gender: string | null; course_id: number; course_name: string; enrollment_date: string }[]
+    { id: number; name: string; parent_name: string | null; gender: string | null; course_id: number; course_name: string; enrollment_date: string; current_year: number; batch_year: number }[]
   >(
-    `SELECT s.id, s.name, s.parent_name, s.gender, s.course_id, c.name as course_name, s.enrollment_date
+    `SELECT s.id, s.name, s.parent_name, s.gender, s.course_id, c.name as course_name, s.enrollment_date, s.current_year, s.batch_year
      FROM students s JOIN courses c ON s.course_id = c.id
      WHERE s.graduated_date IS NULL`
   );
