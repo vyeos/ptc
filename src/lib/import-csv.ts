@@ -53,20 +53,6 @@ function matchHeader(headers: string[]): Record<string, number> {
   };
 }
 
-export interface ConflictFeeSummary {
-  fee_type_name: string;
-  total_amount: number;
-  paid_amount: number;
-  remaining: number;
-}
-
-export interface ConflictPayment {
-  fee_type_name: string;
-  amount: number;
-  payment_method: string;
-  payment_date: string;
-}
-
 export interface ImportConflict {
   rowIndex: number;
   existingStudent: {
@@ -76,13 +62,6 @@ export interface ImportConflict {
     gender: string | null;
     course_name: string;
     enrollment_date: string;
-    current_year: number;
-    batch_year: number;
-    total_fee: number;
-    total_paid: number;
-    total_pending: number;
-    fees: ConflictFeeSummary[];
-    payments: ConflictPayment[];
   };
   imported: {
     name: string;
