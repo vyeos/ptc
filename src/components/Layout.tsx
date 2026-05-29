@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { NavLink, Outlet } from "react-router-dom";
 import { useAuth } from "@/lib/auth-context";
 import { Button } from "@/components/ui/button";
@@ -12,8 +13,9 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { LayoutDashboard, Users, Settings, LogOut } from "lucide-react";
+import { LayoutDashboard, Users, Settings, LogOut, Moon, Sun } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { getSetting, setSetting } from "@/lib/queries";
 
 const navItems = [
   { to: "/", icon: LayoutDashboard, label: "Dashboard" },
@@ -23,12 +25,31 @@ const navItems = [
 
 export default function Layout() {
   const { logout } = useAuth();
+  const [darkMode, setDarkMode] = useState(false);
+
+  useEffect(() => {
+    getSetting("dark_mode").then((dm) => {
+      const isDark = dm === "true";
+      setDarkMode(isDark);
+      document.documentElement.classList.toggle("dark", isDark);
+    });
+  }, []);
+
+  const toggleDarkMode = () => {
+    const next = !darkMode;
+    setDarkMode(next);
+    document.documentElement.classList.toggle("dark", next);
+    setSetting("dark_mode", String(next));
+  };
 
   return (
     <div className="flex h-screen">
       <aside className="flex w-56 flex-col border-r bg-sidebar">
-        <div className="flex h-14 items-center border-b px-4">
+        <div className="flex h-14 items-center justify-between border-b px-4">
           <h1 className="text-lg font-semibold">PTC Manager</h1>
+          <Button variant="ghost" size="icon" className="size-8" onClick={toggleDarkMode}>
+            {darkMode ? <Sun className="size-4" /> : <Moon className="size-4" />}
+          </Button>
         </div>
         <nav className="flex flex-1 flex-col gap-1 p-2">
           {navItems.map((item) => (
