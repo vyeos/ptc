@@ -108,10 +108,6 @@ export default function StudentDetail() {
     load();
   }, [load]);
 
-  const [yearDisplay, setYearDisplay] = useState<
-    Record<number, "total" | "year">
-  >({});
-
   const handleUpdate = async (data: StudentFormData) => {
     await updateStudent(studentId, data);
     setEditOpen(false);
@@ -308,26 +304,8 @@ export default function StudentDetail() {
                     <TableCell className="font-medium">
                       {f.fee_type_name}
                     </TableCell>
-                    <TableCell>
-                      <Select
-                        value={yearDisplay[f.student_fee_id] || "total"}
-                        onValueChange={(v) =>
-                          setYearDisplay((prev) => ({
-                            ...prev,
-                            [f.student_fee_id]: v as "total" | "year",
-                          }))
-                        }
-                      >
-                        <SelectTrigger className="border-0 font-medium">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="total">Total</SelectItem>
-                          <SelectItem value="year">
-                            Year {f.academic_year}
-                          </SelectItem>
-                        </SelectContent>
-                      </Select>
+                    <TableCell className="font-medium">
+                      Year {f.academic_year}
                     </TableCell>
                     <TableCell className="text-right">
                       <span className="inline-flex items-center gap-1.5">

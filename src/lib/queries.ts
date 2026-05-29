@@ -204,10 +204,11 @@ export async function addStudent(data: {
   const feeTypes = await db.select<FeeType[]>(
     "SELECT * FROM fee_types WHERE is_active = 1"
   );
+  const perYearAmount = (amount: number) => amount / course.duration_years;
   for (const ft of feeTypes) {
     await db.execute(
       "INSERT INTO student_fees (student_id, fee_type_id, total_amount, academic_year) VALUES (?, ?, ?, 1)",
-      [studentId, ft.id, ft.amount]
+      [studentId, ft.id, perYearAmount(ft.amount)]
     );
   }
 
@@ -274,14 +275,23 @@ export async function graduateAll(): Promise<{ promoted: number; archived: numbe
   );
   const promoted = year1Students.length;
 
+  const allCourses = await db.select<Course[]>(
+    "SELECT * FROM courses"
+  );
+  const courseDuration = Object.fromEntries(
+    allCourses.map((c) => [c.id, c.duration_years])
+  );
+
   const feeTypes = await db.select<FeeType[]>(
     "SELECT * FROM fee_types WHERE is_active = 1"
   );
+  const perYearAmount = (amount: number, years: number) => amount / years;
   for (const student of year1Students) {
+    const years = courseDuration[student.course_id] || 1;
     for (const ft of feeTypes) {
       await db.execute(
         "INSERT INTO student_fees (student_id, fee_type_id, total_amount, academic_year) VALUES (?, ?, ?, 2)",
-        [student.id, ft.id, ft.amount]
+        [student.id, ft.id, perYearAmount(ft.amount, years)]
       );
     }
   }
