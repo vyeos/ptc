@@ -9,6 +9,7 @@ import {
   getFeeTypes,
   addStudentFee,
   deleteStudentFee,
+  updateStudentFee,
   type StudentWithCourse,
   type StudentFeeSummary,
   type FeePayment,
@@ -88,6 +89,9 @@ export default function StudentDetail() {
   const [feeYear, setFeeYear] = useState("1");
   const [addingFee, setAddingFee] = useState(false);
   const [deleteFeeId, setDeleteFeeId] = useState<number | null>(null);
+  const [editFeeId, setEditFeeId] = useState<number | null>(null);
+  const [editFeeAmount, setEditFeeAmount] = useState("");
+  const [editFeeLoading, setEditFeeLoading] = useState(false);
 
   const load = useCallback(async () => {
     const [s, fs, fp] = await Promise.all([
@@ -103,6 +107,10 @@ export default function StudentDetail() {
   useEffect(() => {
     load();
   }, [load]);
+
+  const [yearDisplay, setYearDisplay] = useState<
+    Record<number, "total" | "year">
+  >({});
 
   const handleUpdate = async (data: StudentFormData) => {
     await updateStudent(studentId, data);
@@ -137,7 +145,7 @@ export default function StudentDetail() {
         studentId,
         Number(selectedFeeTypeId),
         Number(feeAmount),
-        Number(feeYear)
+        Number(feeYear),
       );
       toast.success("Fee type added");
       setAddFeeOpen(false);
@@ -146,6 +154,23 @@ export default function StudentDetail() {
       toast.error(err instanceof Error ? err.message : "Failed to add fee");
     } finally {
       setAddingFee(false);
+    }
+  };
+
+  const handleEditFee = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (editFeeId === null) return;
+    setEditFeeLoading(true);
+    try {
+      await updateStudentFee(editFeeId, Number(editFeeAmount));
+      toast.success("Fee amount updated");
+      setEditFeeId(null);
+      setEditFeeAmount("");
+      load();
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Failed to update fee");
+    } finally {
+      setEditFeeLoading(false);
     }
   };
 
@@ -163,11 +188,13 @@ export default function StudentDetail() {
   };
 
   const selectedFeeType = allFeeTypes.find(
-    (ft) => ft.id === Number(selectedFeeTypeId)
+    (ft) => ft.id === Number(selectedFeeTypeId),
   );
 
   if (!student) {
-    return <div className="flex items-center justify-center p-8">Loading...</div>;
+    return (
+      <div className="flex items-center justify-center p-8">Loading...</div>
+    );
   }
 
   const totalFee = feeSummary.reduce((s, f) => s + f.total_amount, 0);
@@ -177,16 +204,22 @@ export default function StudentDetail() {
   return (
     <div className="flex flex-col gap-6 p-6">
       <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" onClick={() => navigate("/students")}>
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => navigate("/students")}
+        >
           <ArrowLeft className="size-4" />
         </Button>
         <div className="flex-1">
           <h2 className="text-2xl font-semibold">{student.name}</h2>
           <p className="text-sm text-muted-foreground">
-            {student.course_name} &middot; Year {student.current_year} &middot; Batch{" "}
-            {student.batch_year}
+            {student.course_name} &middot; Year {student.current_year} &middot;
+            Batch {student.batch_year}
             {student.graduated_date && (
-              <Badge variant="secondary" className="ml-2">Graduated</Badge>
+              <Badge variant="secondary" className="ml-2">
+                Graduated
+              </Badge>
             )}
           </p>
         </div>
@@ -213,7 +246,9 @@ export default function StudentDetail() {
               <dt className="text-muted-foreground">Gender</dt>
               <dd className="capitalize">{student.gender || "—"}</dd>
               <dt className="text-muted-foreground">Enrolled</dt>
-              <dd>{new Date(student.enrollment_date).toLocaleDateString("en-IN")}</dd>
+              <dd>
+                {new Date(student.enrollment_date).toLocaleDateString("en-IN")}
+              </dd>
             </dl>
           </CardContent>
         </Card>
@@ -225,7 +260,9 @@ export default function StudentDetail() {
               Total: {formatCurrency(totalFee)} &middot; Paid:{" "}
               <span className="text-success">{formatCurrency(totalPaid)}</span>{" "}
               &middot; Remaining:{" "}
-              <span className="text-destructive">{formatCurrency(totalRemaining)}</span>
+              <span className="text-destructive">
+                {formatCurrency(totalRemaining)}
+              </span>
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -268,16 +305,63 @@ export default function StudentDetail() {
               <TableBody>
                 {feeSummary.map((f) => (
                   <TableRow key={f.student_fee_id}>
-                    <TableCell className="font-medium">{f.fee_type_name}</TableCell>
-                    <TableCell>Year {f.academic_year}</TableCell>
-                    <TableCell className="text-right">{formatCurrency(f.total_amount)}</TableCell>
-                    <TableCell className="text-right">{formatCurrency(f.paid_amount)}</TableCell>
-                    <TableCell className="text-right">{formatCurrency(f.remaining)}</TableCell>
+                    <TableCell className="font-medium">
+                      {f.fee_type_name}
+                    </TableCell>
+                    <TableCell>
+                      <Select
+                        value={yearDisplay[f.student_fee_id] || "total"}
+                        onValueChange={(v) =>
+                          setYearDisplay((prev) => ({
+                            ...prev,
+                            [f.student_fee_id]: v as "total" | "year",
+                          }))
+                        }
+                      >
+                        <SelectTrigger className="border-0 font-medium">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="total">Total</SelectItem>
+                          <SelectItem value="year">
+                            Year {f.academic_year}
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <span className="inline-flex items-center gap-1.5">
+                        {formatCurrency(f.total_amount)}
+                        {!student.graduated_date && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="size-6 text-muted-foreground hover:text-foreground"
+                            onClick={() => {
+                              setEditFeeId(f.student_fee_id);
+                              setEditFeeAmount(String(f.total_amount));
+                            }}
+                          >
+                            <Pencil className="size-3" />
+                          </Button>
+                        )}
+                      </span>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {formatCurrency(f.paid_amount)}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {formatCurrency(f.remaining)}
+                    </TableCell>
                     <TableCell>
                       {f.remaining === 0 ? (
-                        <Badge className="bg-success/10 text-success dark:bg-success/20">Paid</Badge>
+                        <Badge className="bg-success/10 text-success dark:bg-success/20">
+                          Paid
+                        </Badge>
                       ) : f.paid_amount > 0 ? (
-                        <Badge className="bg-warning/10 text-warning dark:bg-warning/20">Pending</Badge>
+                        <Badge className="bg-warning/10 text-warning dark:bg-warning/20">
+                          Pending
+                        </Badge>
                       ) : (
                         <Badge variant="destructive">Unpaid</Badge>
                       )}
@@ -308,7 +392,9 @@ export default function StudentDetail() {
         </CardHeader>
         <CardContent>
           {payments.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No payments recorded</p>
+            <p className="text-sm text-muted-foreground">
+              No payments recorded
+            </p>
           ) : (
             <Table>
               <TableHeader>
@@ -336,7 +422,9 @@ export default function StudentDetail() {
                     <TableCell className="text-right font-medium">
                       {formatCurrency(p.amount)}
                     </TableCell>
-                    <TableCell className="text-muted-foreground">{p.notes || "—"}</TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {p.notes || "—"}
+                    </TableCell>
                     {!student.graduated_date && (
                       <TableCell>
                         <Button
@@ -392,12 +480,15 @@ export default function StudentDetail() {
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Payment?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will remove the payment record. The remaining balance will increase.
+              This will remove the payment record. The remaining balance will
+              increase.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDeletePayment}>Delete</AlertDialogAction>
+            <AlertDialogAction onClick={handleDeletePayment}>
+              Delete
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -464,6 +555,47 @@ export default function StudentDetail() {
         </DialogContent>
       </Dialog>
 
+      <Dialog
+        open={editFeeId !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setEditFeeId(null);
+            setEditFeeAmount("");
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Fee Amount</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleEditFee} className="flex flex-col gap-4">
+            <div className="flex flex-col gap-2">
+              <Label>New Amount</Label>
+              <Input
+                type="number"
+                min={0}
+                value={editFeeAmount}
+                onChange={(e) => setEditFeeAmount(e.target.value)}
+                required
+              />
+              {editFeeId !== null && (
+                <p className="text-xs text-muted-foreground">
+                  Already paid:{" "}
+                  {formatCurrency(
+                    feeSummary.find((f) => f.student_fee_id === editFeeId)
+                      ?.paid_amount ?? 0,
+                  )}
+                  &nbsp;&middot; New amount must be at least this value
+                </p>
+              )}
+            </div>
+            <Button type="submit" disabled={editFeeLoading || !editFeeAmount}>
+              {editFeeLoading ? "Saving..." : "Save"}
+            </Button>
+          </form>
+        </DialogContent>
+      </Dialog>
+
       <AlertDialog
         open={deleteFeeId !== null}
         onOpenChange={(open) => !open && setDeleteFeeId(null)}
@@ -472,12 +604,15 @@ export default function StudentDetail() {
           <AlertDialogHeader>
             <AlertDialogTitle>Remove Fee Type?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will remove the fee from this student. Cannot remove if payments exist.
+              This will remove the fee from this student. Cannot remove if
+              payments exist.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDeleteFee}>Remove</AlertDialogAction>
+            <AlertDialogAction onClick={handleDeleteFee}>
+              Remove
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

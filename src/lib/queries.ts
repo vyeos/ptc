@@ -381,6 +381,32 @@ export async function addStudentFee(
   );
 }
 
+export async function updateStudentFee(
+  studentFeeId: number,
+  newTotalAmount: number
+): Promise<void> {
+  const db = await getDb();
+
+  const summary = await db.select<{ paid_amount: number }[]>(
+    `SELECT COALESCE(SUM(fp.amount), 0) as paid_amount
+     FROM student_fees sf
+     LEFT JOIN fee_payments fp ON fp.student_fee_id = sf.id
+     WHERE sf.id = ?
+     GROUP BY sf.id`,
+    [studentFeeId]
+  );
+
+  if (summary.length === 0) throw new Error("Fee record not found");
+  if (newTotalAmount < summary[0].paid_amount) {
+    throw new Error("New amount cannot be less than already paid amount");
+  }
+
+  await db.execute(
+    "UPDATE student_fees SET total_amount = ? WHERE id = ?",
+    [newTotalAmount, studentFeeId]
+  );
+}
+
 export async function deleteStudentFee(studentFeeId: number): Promise<boolean> {
   const db = await getDb();
   const payments = await db.select<{ cnt: number }[]>(
