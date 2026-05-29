@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Users, IndianRupee, AlertTriangle } from "lucide-react";
-import { ExportMenu } from "@/components/ExportMenu";
+import { StudentActions } from "@/components/StudentActions";
 
 function formatCurrency(n: number) {
   return new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(n);
@@ -32,7 +32,7 @@ export default function Dashboard() {
     <div className="flex flex-col gap-6 p-6">
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-semibold">Dashboard</h2>
-        <ExportMenu context="dashboard" />
+        <StudentActions onDataChange={load} />
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">

@@ -2,12 +2,9 @@ import { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   getStudents,
-  addStudent,
   deleteStudent,
-  graduateAll,
   type StudentWithCourse,
 } from "@/lib/queries";
-import { StudentForm, type StudentFormData } from "@/components/StudentForm";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -21,12 +18,6 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -35,7 +26,6 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import {
   DropdownMenu,
@@ -43,90 +33,17 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Plus, GraduationCap, MoreHorizontal, Trash2, Search, Download } from "lucide-react";
+import { MoreHorizontal, Trash2, Search } from "lucide-react";
 import { toast } from "sonner";
-import { importStudentsCsv, resolveConflicts, type ImportConflict, type ImportResult } from "@/lib/import-csv";
-import { importStudentsDb } from "@/lib/import-db";
-import { ImportConflictDialog } from "@/components/ImportConflictDialog";
+import { StudentActions } from "@/components/StudentActions";
 
 export default function Students() {
   const navigate = useNavigate();
   const [tab, setTab] = useState("year1");
   const [students, setStudents] = useState<StudentWithCourse[]>([]);
   const [search, setSearch] = useState("");
-  const [dialogOpen, setDialogOpen] = useState(false);
   const [deleteId, setDeleteId] = useState<number | null>(null);
-  const [importing, setImporting] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [conflicts, setConflicts] = useState<ImportConflict[]>([]);
-
-  const showImportResult = (result: ImportResult, label: string) => {
-    if (result.added > 0) {
-      toast.success(`Imported ${result.added} student${result.added > 1 ? "s" : ""}`);
-    }
-    if (result.duplicates > 0) {
-      toast.info(`${result.duplicates} duplicate${result.duplicates > 1 ? "s" : ""} skipped (identical data)`);
-    }
-    if (result.skipped.length > 0) {
-      toast.warning(`Skipped ${result.skipped.length} row${result.skipped.length > 1 ? "s" : ""}: ${result.skipped[0]}`);
-    }
-    if (result.errors.length > 0) {
-      toast.error(`${result.errors.length} error${result.errors.length > 1 ? "s" : ""}: ${result.errors[0]}`);
-    }
-    if (result.conflicts.length > 0) {
-      setConflicts(result.conflicts);
-    } else if (result.added === 0 && result.errors.length === 0 && result.skipped.length === 0 && result.duplicates === 0) {
-      toast.info(`No students found in ${label}`);
-    }
-    load();
-  };
-
-  const handleImportCsv = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    e.target.value = "";
-    setImporting(true);
-    try {
-      const result = await importStudentsCsv(file);
-      showImportResult(result, "CSV");
-    } catch {
-      toast.error("Failed to import CSV");
-    } finally {
-      setImporting(false);
-    }
-  };
-
-  const handleImportDb = async () => {
-    setImporting(true);
-    try {
-      const result = await importStudentsDb();
-      if (result) {
-        showImportResult(result, "database");
-      }
-    } catch {
-      toast.error("Failed to import database");
-    } finally {
-      setImporting(false);
-    }
-  };
-
-  const handleResolveConflicts = async (resolutions: Map<number, "import" | "local">) => {
-    try {
-      const result = await resolveConflicts(conflicts, resolutions);
-      const kept = conflicts.length - result.updated;
-      if (result.updated > 0) {
-        toast.success(`Updated ${result.updated} student${result.updated > 1 ? "s" : ""} from import`);
-      }
-      if (kept > 0) {
-        toast.info(`Kept local data for ${kept} student${kept > 1 ? "s" : ""}`);
-      }
-      load();
-    } catch {
-      toast.error("Failed to resolve conflicts");
-    } finally {
-      setConflicts([]);
-    }
-  };
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -147,17 +64,6 @@ export default function Students() {
     load();
   }, [load]);
 
-  const handleAdd = async (data: StudentFormData) => {
-    try {
-      await addStudent(data);
-      setDialogOpen(false);
-      toast.success("Student added");
-      load();
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to add student");
-    }
-  };
-
   const handleDelete = async () => {
     if (deleteId === null) return;
     await deleteStudent(deleteId);
@@ -166,74 +72,11 @@ export default function Students() {
     load();
   };
 
-  const handleGraduate = async () => {
-    const result = await graduateAll();
-    toast.success(
-      `Graduated: ${result.promoted} promoted to Year 2, ${result.archived} archived`
-    );
-    load();
-  };
-
   return (
     <div className="flex flex-col gap-4 p-6">
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-semibold">Students</h2>
-        <div className="flex gap-2">
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button variant="outline">
-                <GraduationCap data-icon="inline-start" />
-                Graduate All
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Graduate All Students?</AlertDialogTitle>
-                <AlertDialogDescription>
-                  This will promote all Year 1 students to Year 2 and archive all
-                  Year 2 students. Year 2 fee assignments will be created for
-                  promoted students. This action cannot be undone.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction onClick={handleGraduate}>
-                  Confirm Graduation
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
-
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" disabled={importing}>
-                <Download data-icon="inline-start" />
-                {importing ? "Importing..." : "Import"}
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem asChild>
-                <label className="cursor-pointer">
-                  Import CSV
-                  <input
-                    type="file"
-                    accept=".csv"
-                    className="hidden"
-                    onChange={handleImportCsv}
-                  />
-                </label>
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={handleImportDb}>
-                Import Database (.db)
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-
-          <Button onClick={() => setDialogOpen(true)}>
-            <Plus data-icon="inline-start" />
-            Add Student
-          </Button>
-        </div>
+        <StudentActions onDataChange={load} />
       </div>
 
       <div className="relative max-w-sm">
@@ -316,15 +159,6 @@ export default function Students() {
         ))}
       </Tabs>
 
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Add Student</DialogTitle>
-          </DialogHeader>
-          <StudentForm onSubmit={handleAdd} onCancel={() => setDialogOpen(false)} />
-        </DialogContent>
-      </Dialog>
-
       <AlertDialog open={deleteId !== null} onOpenChange={(open) => !open && setDeleteId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -339,13 +173,6 @@ export default function Students() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
-      <ImportConflictDialog
-        conflicts={conflicts}
-        open={conflicts.length > 0}
-        onResolve={handleResolveConflicts}
-        onCancel={() => setConflicts([])}
-      />
     </div>
   );
 }
