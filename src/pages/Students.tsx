@@ -57,12 +57,13 @@ export default function Students() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [deleteId, setDeleteId] = useState<number | null>(null);
   const [importing, setImporting] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [conflicts, setConflicts] = useState<ImportConflict[]>([]);
 
   const showImportResult = (result: ImportResult, label: string) => {
     if (result.added > 0) {
       toast.success(`Imported ${result.added} student${result.added > 1 ? "s" : ""}`);
-      load();
+      if (tab !== "year1") setTab("year1");
     }
     if (result.duplicates > 0) {
       toast.info(`${result.duplicates} duplicate${result.duplicates > 1 ? "s" : ""} skipped (identical data)`);
@@ -78,6 +79,7 @@ export default function Students() {
     } else if (result.added === 0 && result.errors.length === 0 && result.skipped.length === 0 && result.duplicates === 0) {
       toast.info(`No students found in ${label}`);
     }
+    load();
   };
 
   const handleImportCsv = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -115,6 +117,7 @@ export default function Students() {
       const kept = conflicts.length - result.updated;
       if (result.updated > 0) {
         toast.success(`Updated ${result.updated} student${result.updated > 1 ? "s" : ""} from import`);
+        if (tab !== "year1") setTab("year1");
       }
       if (kept > 0) {
         toast.info(`Kept local data for ${kept} student${kept > 1 ? "s" : ""}`);
@@ -128,11 +131,18 @@ export default function Students() {
   };
 
   const load = useCallback(async () => {
-    const filter =
-      tab === "archived"
-        ? { graduated: true, search }
-        : { year: tab === "year1" ? 1 : 2, graduated: false, search };
-    setStudents(await getStudents(filter));
+    setLoading(true);
+    try {
+      const filter =
+        tab === "archived"
+          ? { graduated: true, search }
+          : { year: tab === "year1" ? 1 : 2, graduated: false, search };
+      setStudents(await getStudents(filter));
+    } catch {
+      toast.error("Failed to load students");
+    } finally {
+      setLoading(false);
+    }
   }, [tab, search]);
 
   useEffect(() => {
@@ -247,7 +257,9 @@ export default function Students() {
 
         {["year1", "year2", "archived"].map((t) => (
           <TabsContent key={t} value={t}>
-            {students.length === 0 ? (
+            {loading ? (
+              <p className="py-8 text-center text-muted-foreground">Loading...</p>
+            ) : students.length === 0 ? (
               <p className="py-8 text-center text-muted-foreground">No students found</p>
             ) : (
               <Table>
