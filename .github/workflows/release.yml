@@ -46,11 +46,13 @@ jobs:
           cargo --version
 
       - name: Rust cache
+        if: matrix.platform == 'windows'
         uses: swatinem/rust-cache@v2
         with:
           workspaces: src-tauri -> target
 
       - name: Install bun
+        if: matrix.platform == 'windows'
         uses: oven-sh/setup-bun@v2
 
       - name: Install frontend dependencies
