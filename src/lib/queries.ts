@@ -19,6 +19,8 @@ export interface Student {
   current_year: number;
   batch_year: number;
   graduated_date: string | null;
+  cancelled_date: string | null;
+  cancellation_note: string | null;
   created_at: string;
 }
 
@@ -125,6 +127,7 @@ export async function deleteCourse(id: number): Promise<void> {
 export async function getStudents(filter: {
   year?: number;
   graduated?: boolean;
+  cancelled?: boolean;
   search?: string;
 }): Promise<StudentWithCourse[]> {
   const db = await getDb();
@@ -136,10 +139,12 @@ export async function getStudents(filter: {
   `;
   const params: (string | number)[] = [];
 
-  if (filter.graduated) {
-    query += " AND s.graduated_date IS NOT NULL";
+  if (filter.cancelled) {
+    query += " AND s.cancelled_date IS NOT NULL";
+  } else if (filter.graduated) {
+    query += " AND s.graduated_date IS NOT NULL AND s.cancelled_date IS NULL";
   } else {
-    query += " AND s.graduated_date IS NULL";
+    query += " AND s.graduated_date IS NULL AND s.cancelled_date IS NULL";
     if (filter.year) {
       query += " AND s.current_year = ?";
       params.push(filter.year);
@@ -258,20 +263,28 @@ export async function deleteStudent(id: number): Promise<void> {
   await db.execute("DELETE FROM students WHERE id = ?", [id]);
 }
 
+export async function cancelAdmission(id: number, note?: string): Promise<void> {
+  const db = await getDb();
+  await db.execute(
+    "UPDATE students SET cancelled_date = datetime('now'), cancellation_note = ? WHERE id = ?",
+    [note || null, id]
+  );
+}
+
 export async function graduateAll(): Promise<{ promoted: number; archived: number }> {
   const db = await getDb();
 
   const archivedResult = await db.execute(
-    "UPDATE students SET graduated_date = datetime('now') WHERE current_year >= 2 AND graduated_date IS NULL"
+    "UPDATE students SET graduated_date = datetime('now') WHERE current_year >= 2 AND graduated_date IS NULL AND cancelled_date IS NULL"
   );
   const archived = archivedResult.rowsAffected;
 
   const year1Students = await db.select<Student[]>(
-    "SELECT * FROM students WHERE current_year = 1 AND graduated_date IS NULL"
+    "SELECT * FROM students WHERE current_year = 1 AND graduated_date IS NULL AND cancelled_date IS NULL"
   );
 
   await db.execute(
-    "UPDATE students SET current_year = current_year + 1 WHERE current_year = 1 AND graduated_date IS NULL"
+    "UPDATE students SET current_year = current_year + 1 WHERE current_year = 1 AND graduated_date IS NULL AND cancelled_date IS NULL"
   );
   const promoted = year1Students.length;
 
@@ -494,7 +507,7 @@ export async function searchActiveStudents(search: string): Promise<
     `SELECT s.id, s.name, c.name as course_name, s.current_year
      FROM students s
      JOIN courses c ON s.course_id = c.id
-     WHERE s.graduated_date IS NULL AND s.name LIKE ?
+     WHERE s.graduated_date IS NULL AND s.cancelled_date IS NULL AND s.name LIKE ?
      ORDER BY s.name
      LIMIT 20`,
     [`%${search}%`]
@@ -509,7 +522,7 @@ export async function getAllActiveStudents(): Promise<
     `SELECT s.id, s.name, c.name as course_name, s.current_year
      FROM students s
      JOIN courses c ON s.course_id = c.id
-     WHERE s.graduated_date IS NULL
+     WHERE s.graduated_date IS NULL AND s.cancelled_date IS NULL
      ORDER BY s.name`
   );
 }
@@ -529,7 +542,7 @@ export async function getDashboardStats(): Promise<DashboardStats> {
   const db = await getDb();
 
   const counts = await db.select<{ current_year: number; cnt: number }[]>(
-    "SELECT current_year, COUNT(*) as cnt FROM students WHERE graduated_date IS NULL GROUP BY current_year"
+    "SELECT current_year, COUNT(*) as cnt FROM students WHERE graduated_date IS NULL AND cancelled_date IS NULL GROUP BY current_year"
   );
 
   const year1 = counts.find((c) => c.current_year === 1)?.cnt || 0;
@@ -543,10 +556,10 @@ export async function getDashboardStats(): Promise<DashboardStats> {
        COALESCE((SELECT SUM(fp.amount) FROM fee_payments fp
                  JOIN student_fees sf2 ON fp.student_fee_id = sf2.id
                  JOIN students s2 ON sf2.student_id = s2.id
-                 WHERE s2.graduated_date IS NULL), 0) as total_paid
+                 WHERE s2.graduated_date IS NULL AND s2.cancelled_date IS NULL), 0) as total_paid
      FROM student_fees sf
      JOIN students s ON sf.student_id = s.id
-     WHERE s.graduated_date IS NULL`
+     WHERE s.graduated_date IS NULL AND s.cancelled_date IS NULL`
   );
 
   const expected = feeStats[0]?.total_expected || 0;
@@ -593,7 +606,7 @@ export async function getPendingFeeStudents(): Promise<
       FROM fee_payments fp
       GROUP BY fp.student_id
     ) paid ON paid.student_id = s.id
-    WHERE s.graduated_date IS NULL
+    WHERE s.graduated_date IS NULL AND s.cancelled_date IS NULL
     GROUP BY s.id
     HAVING pending > 0
     ORDER BY pending DESC

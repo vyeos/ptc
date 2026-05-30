@@ -81,7 +81,21 @@ async function initSchema() {
     )
   `);
 
+  await migrateSchema(d);
   await seedDefaults();
+}
+
+async function migrateSchema(d: Database) {
+  const cols = await d.select<{ name: string }[]>(
+    "PRAGMA table_info(students)"
+  );
+  const colNames = cols.map((c) => c.name);
+  if (!colNames.includes("cancelled_date")) {
+    await d.execute("ALTER TABLE students ADD COLUMN cancelled_date DATETIME");
+  }
+  if (!colNames.includes("cancellation_note")) {
+    await d.execute("ALTER TABLE students ADD COLUMN cancellation_note TEXT");
+  }
 }
 
 async function seedDefaults() {

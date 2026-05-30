@@ -10,6 +10,7 @@ import {
   addStudentFee,
   deleteStudentFee,
   updateStudentFee,
+  cancelAdmission,
   type StudentWithCourse,
   type StudentFeeSummary,
   type FeePayment,
@@ -59,7 +60,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { ArrowLeft, Pencil, Plus, Trash2 } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { ArrowLeft, Ban, Pencil, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { ExportMenu } from "@/components/ExportMenu";
 
@@ -92,6 +94,8 @@ export default function StudentDetail() {
   const [editFeeId, setEditFeeId] = useState<number | null>(null);
   const [editFeeAmount, setEditFeeAmount] = useState("");
   const [editFeeLoading, setEditFeeLoading] = useState(false);
+  const [cancelOpen, setCancelOpen] = useState(false);
+  const [cancelNote, setCancelNote] = useState("");
 
   const load = useCallback(async () => {
     const [s, fs, fp] = await Promise.all([
@@ -183,6 +187,14 @@ export default function StudentDetail() {
     load();
   };
 
+  const handleCancelAdmission = async () => {
+    await cancelAdmission(studentId, cancelNote || undefined);
+    setCancelOpen(false);
+    setCancelNote("");
+    toast.success("Admission cancelled");
+    load();
+  };
+
   const selectedFeeType = allFeeTypes.find(
     (ft) => ft.id === Number(selectedFeeTypeId),
   );
@@ -192,6 +204,8 @@ export default function StudentDetail() {
       <div className="flex items-center justify-center p-8">Loading...</div>
     );
   }
+
+  const isActive = !student.graduated_date && !student.cancelled_date;
 
   const totalFee = feeSummary.reduce((s, f) => s + f.total_amount, 0);
   const totalPaid = feeSummary.reduce((s, f) => s + f.paid_amount, 0);
@@ -212,7 +226,12 @@ export default function StudentDetail() {
           <p className="text-sm text-muted-foreground">
             {student.course_name} &middot; Year {student.current_year} &middot;
             Batch {student.batch_year}
-            {student.graduated_date && (
+            {student.cancelled_date && (
+              <Badge variant="destructive" className="ml-2">
+                Cancelled
+              </Badge>
+            )}
+            {student.graduated_date && !student.cancelled_date && (
               <Badge variant="secondary" className="ml-2">
                 Graduated
               </Badge>
@@ -221,11 +240,17 @@ export default function StudentDetail() {
         </div>
         <div className="flex gap-2">
           <ExportMenu context="student" studentId={studentId} />
-          {!student.graduated_date && (
-            <Button variant="outline" onClick={() => setEditOpen(true)}>
-              <Pencil data-icon="inline-start" />
-              Edit
-            </Button>
+          {!student.graduated_date && !student.cancelled_date && (
+            <>
+              <Button variant="outline" onClick={() => setCancelOpen(true)}>
+                <Ban data-icon="inline-start" />
+                Cancel Admission
+              </Button>
+              <Button variant="outline" onClick={() => setEditOpen(true)}>
+                <Pencil data-icon="inline-start" />
+                Edit
+              </Button>
+            </>
           )}
         </div>
       </div>
@@ -245,6 +270,18 @@ export default function StudentDetail() {
               <dd>
                 {new Date(student.enrollment_date).toLocaleDateString("en-IN")}
               </dd>
+              {student.cancelled_date && (
+                <>
+                  <dt className="text-muted-foreground">Cancelled</dt>
+                  <dd>{new Date(student.cancelled_date).toLocaleDateString("en-IN")}</dd>
+                  {student.cancellation_note && (
+                    <>
+                      <dt className="text-muted-foreground">Note</dt>
+                      <dd>{student.cancellation_note}</dd>
+                    </>
+                  )}
+                </>
+              )}
             </dl>
           </CardContent>
         </Card>
@@ -262,7 +299,7 @@ export default function StudentDetail() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            {!student.graduated_date && (
+            {isActive && (
               <Button onClick={() => setPaymentOpen(true)} className="mb-4">
                 <Plus data-icon="inline-start" />
                 Add Payment
@@ -275,7 +312,7 @@ export default function StudentDetail() {
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>Fee Summary</CardTitle>
-          {!student.graduated_date && (
+          {isActive && (
             <Button size="sm" variant="outline" onClick={openAddFeeDialog}>
               <Plus data-icon="inline-start" />
               Add Fee Type
@@ -295,7 +332,7 @@ export default function StudentDetail() {
                   <TableHead className="text-right">Paid</TableHead>
                   <TableHead className="text-right">Remaining</TableHead>
                   <TableHead>Status</TableHead>
-                  {!student.graduated_date && <TableHead className="w-10" />}
+                  {isActive && <TableHead className="w-10" />}
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -310,7 +347,7 @@ export default function StudentDetail() {
                     <TableCell className="text-right">
                       <span className="inline-flex items-center gap-1.5">
                         {formatCurrency(f.total_amount)}
-                        {!student.graduated_date && (
+                        {isActive && (
                           <Button
                             variant="ghost"
                             size="icon"
@@ -344,7 +381,7 @@ export default function StudentDetail() {
                         <Badge variant="destructive">Unpaid</Badge>
                       )}
                     </TableCell>
-                    {!student.graduated_date && (
+                    {isActive && (
                       <TableCell>
                         <Button
                           variant="ghost"
@@ -382,7 +419,7 @@ export default function StudentDetail() {
                   <TableHead>Method</TableHead>
                   <TableHead className="text-right">Amount</TableHead>
                   <TableHead>Notes</TableHead>
-                  {!student.graduated_date && <TableHead className="w-10" />}
+                  {isActive && <TableHead className="w-10" />}
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -403,7 +440,7 @@ export default function StudentDetail() {
                     <TableCell className="text-muted-foreground">
                       {p.notes || "—"}
                     </TableCell>
-                    {!student.graduated_date && (
+                    {isActive && (
                       <TableCell>
                         <Button
                           variant="ghost"
@@ -594,6 +631,44 @@ export default function StudentDetail() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <Dialog
+        open={cancelOpen}
+        onOpenChange={(open) => {
+          if (!open) {
+            setCancelOpen(false);
+            setCancelNote("");
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Cancel Admission</DialogTitle>
+          </DialogHeader>
+          <div className="flex flex-col gap-4">
+            <p className="text-sm text-muted-foreground">
+              This student will be marked as cancelled. Their fees will no longer be counted in reports.
+            </p>
+            <div className="flex flex-col gap-2">
+              <Label>Note (optional)</Label>
+              <Textarea
+                value={cancelNote}
+                onChange={(e) => setCancelNote(e.target.value)}
+                placeholder="Reason for cancellation..."
+                rows={3}
+              />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => { setCancelOpen(false); setCancelNote(""); }}>
+                Go Back
+              </Button>
+              <Button variant="destructive" onClick={handleCancelAdmission}>
+                Cancel Admission
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

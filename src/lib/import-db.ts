@@ -76,7 +76,7 @@ export async function importStudentsDb(): Promise<ImportResult | null> {
     >(
       `SELECT s.id, s.name, s.parent_name, s.gender, s.course_id, c.name as course_name, s.enrollment_date
        FROM students s JOIN courses c ON s.course_id = c.id
-       WHERE s.graduated_date IS NULL`
+       WHERE s.graduated_date IS NULL AND s.cancelled_date IS NULL`
     );
 
     const studentsByName = new Map<string, typeof existingStudents>();
